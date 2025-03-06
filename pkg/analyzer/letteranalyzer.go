@@ -8,6 +8,7 @@ import (
 type lettercount struct {
 	TotalCount        int
 	LetterNumberArray [36]int //0-9 + 26 letters
+	PositionArray     [36][]int
 }
 
 func CountLetters(textToCount string) *lettercount {
@@ -19,10 +20,12 @@ func CountLetters(textToCount string) *lettercount {
 				var letterLower rune = unicode.ToLower(char)
 				var letterNumber int = int(letterLower - 'a')
 				lcText.LetterNumberArray[letterNumber+10]++
-				fmt.Printf("For index %v, plussed position %v with one with character %v\n", index, letterNumber+10, char)
+				lcText.PositionArray[letterNumber+10] = append(lcText.PositionArray[letterNumber+10], index)
+				fmt.Printf("For index %v, plussed position %v with one with character %c\n", index, letterNumber+10, char)
 			} else {
 				lcText.LetterNumberArray[int(char-'0')]++
-				fmt.Printf("For index %v, plussed position %v with one with character %v\n", index, int(char), char)
+				lcText.PositionArray[int(char-'0')] = append(lcText.PositionArray[int(char-'0')], index)
+				fmt.Printf("For index %v, plussed position %v with one with character %c\n", index, int(char), char)
 
 			}
 

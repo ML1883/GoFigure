@@ -16,8 +16,8 @@ func main() {
 	if err != nil {
 		fmt.Println("Error:", err)
 	} else {
-		fmt.Printf("Returned struct: %v\n Return totalcount: %v\n", returnStruct.LetterNumberArray, returnStruct.TotalCount)
-		fmt.Printf("Returned struct2: %v\n Return totalcount2: %v\n", returnStruct2.LetterNumberArray, returnStruct2.TotalCount)
+		fmt.Printf("Returned struct: %v\n Return totalcount: %v\n Return position array: %v\n", returnStruct.LetterNumberArray, returnStruct.TotalCount, returnStruct.PositionArray)
+		fmt.Printf("Returned struct2: %v\n Return totalcount2: %v\n Return position array2: %v\n", returnStruct2.LetterNumberArray, returnStruct2.TotalCount, returnStruct2.PositionArray)
 		fmt.Printf("Total value %v\n", totalValue)
 	}
 
