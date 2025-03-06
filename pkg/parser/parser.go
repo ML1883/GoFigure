@@ -14,7 +14,7 @@ func ParseStringToAlphanumeric(textToParse string) string {
 		// Allow alphanumeric characters and spaces
 		if unicode.IsLetter(char) || unicode.IsNumber(char) || unicode.IsSpace(char) {
 			result.WriteRune(char)
-			fmt.Printf("Character appended: %v at index %v\n", char, index)
+			fmt.Printf("Character appended: %c at index %v\n", char, index)
 		}
 	}
 
