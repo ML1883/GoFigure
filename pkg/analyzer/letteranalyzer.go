@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"math"
 	"unicode"
 )
 
@@ -51,5 +52,23 @@ func IntVectorMultiplication(array1 []int, array2 []int) (int, error) {
 	} else {
 		return 0, fmt.Errorf("array with zero length or unequal array length detected. Length array1: %v Length array2: %v", lengthArray1, lengthArray2)
 	}
+
+}
+
+func CosineSimilarityVectors(array1 []int, array2 []int) float64 {
+	/*Performs consine similarity calculation on two arrays of integers.
+	Resulting in a cosine similairity. We do not check if the arrays have correct sizes.
+	TODO: make this incorporate the position somehow*/
+	var dotProduct int = 0
+	var magnitudeArray1 int = 0
+	var magnitudeArray2 int = 0
+
+	for i := range array1 {
+		dotProduct += array1[i] * array2[i]
+		magnitudeArray1 += array1[i] * array1[i]
+		magnitudeArray2 += array2[i] * array2[i]
+	}
+
+	return float64(dotProduct) / (math.Sqrt(float64(magnitudeArray1)) * math.Sqrt(float64(magnitudeArray2))) //Can be above two because of float magic
 
 }
