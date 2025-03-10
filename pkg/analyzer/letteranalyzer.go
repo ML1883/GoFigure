@@ -72,3 +72,37 @@ func CosineSimilarityVectors(array1 []int, array2 []int) float64 {
 	return float64(dotProduct) / (math.Sqrt(float64(magnitudeArray1)) * math.Sqrt(float64(magnitudeArray2))) //Can be above two because of float magic
 
 }
+
+func JaccardIndexVectors(array1 []int, array2 []int) float64 {
+	/*Calculate the Jaccard idnex of two arrays
+	No error handling.*/
+	var intersection int = 0
+	var union int = 0
+
+	for i := range array1 {
+		intersection += min(array1[i], array2[i]) //overlap
+		union += max(array1[i], array2[i])        //area
+	}
+
+	if union == 0 {
+		return 1
+	}
+
+	return float64(intersection) / float64(union)
+}
+
+func PositionDifferenceVectors(array1 []int, array2 []int) float64 {
+	/*
+		There aren't really any specific formulas for this problem so we will have to use the following algorithm:
+		1. Check if a letter is present in array1 or array2
+		2. If it is present in both, calculate difference
+		3. If it is present in just one, leave it(??)
+		4. If the sizes differ, average out the positions that 'stick out'
+		5. If the sizes don't differ, just calculate differences (absolute numbers here or squaring of numbers depending on how much we want to punish letters being on outlier positions)
+		6. If its present in none we leave it.
+		7. Normalize the difference calculations using the total length of both (or single) arrays such that the difference becomes reduced to an index.
+			-> we will have to find out what the index is that we want here
+	*/
+
+	return float64(0) // Placeholder for now.
+}
