@@ -9,8 +9,8 @@ import (
 func main() {
 	fmt.Println("Starting main script.")
 	var parsedText = parser.ParseStringToAlphanumeric("This is a test stringz0123")
-	// var parsedText2 = parser.ParseStringToAlphanumeric("This is a test string")
-	var parsedText2 = parser.ParseStringToAlphanumeric("How this does is the a cosine test react stringz0123 to changing order") //Jaccard takes a tougher hit than Cosine in this case. Jaccard is probs more sensitive to outliers.
+	var parsedText2 = parser.ParseStringToAlphanumeric("This is a string0005757570")
+	// var parsedText2 = parser.ParseStringToAlphanumeric("How this does is the a cosine test react stringz0123 to changing order") //Jaccard takes a tougher hit than Cosine in this case. Jaccard is probs more sensitive to outliers.
 	var returnStruct = analyzer.CountLetters(parsedText)
 	var returnStruct2 = analyzer.CountLetters(parsedText2)
 	totalValue, err := analyzer.IntVectorMultiplication(returnStruct.LetterNumberArray[:], returnStruct2.LetterNumberArray[:])
@@ -25,5 +25,7 @@ func main() {
 	JaccardIndex := analyzer.JaccardIndexVectors(returnStruct.LetterNumberArray[:], returnStruct2.LetterNumberArray[:])
 	fmt.Printf("Cosine similairity of the two arrays: %v\n", cosineSimilarity)
 	fmt.Printf("Jaccard index of the two arrays: %v\n", JaccardIndex)
+	positionalCalc := analyzer.PositionDifferenceVectors(returnStruct.PositionArray[:], returnStruct2.PositionArray[:], max(returnStruct.TotalCount, returnStruct2.TotalCount))
+	fmt.Printf("Position index is: %v\n", positionalCalc)
 
 }

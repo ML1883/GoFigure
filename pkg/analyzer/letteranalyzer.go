@@ -22,11 +22,11 @@ func CountLetters(textToCount string) *lettercount {
 				var letterNumber int = int(letterLower - 'a')
 				lcText.LetterNumberArray[letterNumber+10]++
 				lcText.PositionArray[letterNumber+10] = append(lcText.PositionArray[letterNumber+10], index)
-				fmt.Printf("For index %v, plussed position %v with one with character %c\n", index, letterNumber+10, char)
+				// fmt.Printf("For index %v, plussed position %v with one with character %c\n", index, letterNumber+10, char)
 			} else {
 				lcText.LetterNumberArray[int(char-'0')]++
 				lcText.PositionArray[int(char-'0')] = append(lcText.PositionArray[int(char-'0')], index)
-				fmt.Printf("For index %v, plussed position %v with one with character %c\n", index, int(char), char)
+				// fmt.Printf("For index %v, plussed position %v with one with character %c\n", index, int(char), char)
 
 			}
 
@@ -46,7 +46,7 @@ func IntVectorMultiplication(array1 []int, array2 []int) (int, error) {
 		var total int = 0
 		for index := range array1 {
 			total += (array1[index] * array2[index])
-			fmt.Printf("Array 1 value: %v and array2 value: %v\n", array1[index], array2[index])
+			// fmt.Printf("Array 1 value: %v and array2 value: %v\n", array1[index], array2[index])
 		}
 		return total, nil
 	} else {
@@ -91,7 +91,7 @@ func JaccardIndexVectors(array1 []int, array2 []int) float64 {
 	return float64(intersection) / float64(union)
 }
 
-func PositionDifferenceVectors(array1 []int, array2 []int) float64 {
+func PositionDifferenceVectors(array1 [][]int, array2 [][]int, totalLength int) float64 {
 	/*
 		There aren't really any specific formulas for this problem so we will have to use the following algorithm:
 		1. Check if a letter is present in array1 or array2
@@ -102,7 +102,40 @@ func PositionDifferenceVectors(array1 []int, array2 []int) float64 {
 		6. If its present in none we leave it.
 		7. Normalize the difference calculations using the total length of both (or single) arrays such that the difference becomes reduced to an index.
 			-> we will have to find out what the index is that we want here
+
+		Maybe do something with the frequency calc as well to show importance akin to levensthein Algo? Or perhaps include this in different version.
 	*/
 
-	return float64(0) // Placeholder for now.
+	// var averageLeftover float64 = 0
+	var lengthArray1 int = 0
+	var lengthArray2 int = 0
+	var totalDifference float64 = 0
+	//var letterCount int = 0 //How many letters do w have
+
+	for i := range array1 {
+		subArray1 := array1[i]
+		subArray2 := array2[i]
+		lengthArray1 = len(subArray1)
+		lengthArray2 = len(subArray2)
+
+		if lengthArray1 == 0 && lengthArray2 == 0 {
+			continue
+		}
+
+		switch {
+		case lengthArray1 > lengthArray2:
+			continue
+		case lengthArray1 < lengthArray2:
+			continue
+		case lengthArray1 == lengthArray2:
+			for j := range lengthArray1 {
+				totalDifference += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
+			}
+		default:
+			continue
+		}
+
+	}
+
+	return float64(totalDifference) / float64(totalLength)
 }
