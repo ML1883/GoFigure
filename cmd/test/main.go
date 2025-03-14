@@ -12,8 +12,8 @@ func main() {
 	var parsedText2 = parser.ParseStringToAlphanumeric("aaaa         ")
 	// var parsedText = parser.ParseStringToAlphanumeric("This is a test string123aaaa")
 	// var parsedText2 = parser.ParseStringToAlphanumeric("aaaaThis is a test string123")
-	var returnStruct = analyzer.CountLetters(parsedText)
-	var returnStruct2 = analyzer.CountLetters(parsedText2)
+	var returnStruct = analyzer.AnalyzeLettersFromText(parsedText)
+	var returnStruct2 = analyzer.AnalyzeLettersFromText(parsedText2)
 	// totalValue, err := analyzer.IntVectorMultiplication(returnStruct.LetterNumberArray[:], returnStruct2.LetterNumberArray[:])
 	// if err != nil {
 	// 	fmt.Println("Error:", err)
