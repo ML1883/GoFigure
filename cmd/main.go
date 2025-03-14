@@ -8,8 +8,8 @@ import (
 
 func main() {
 	fmt.Println("Starting main script.")
-	var parsedText = parser.ParseStringToAlphanumeric("This is a test stringz0123")
-	var parsedText2 = parser.ParseStringToAlphanumeric("This is a string0005757570")
+	var parsedText = parser.ParseStringToAlphanumeric("This is a test string123aaaa")
+	var parsedText2 = parser.ParseStringToAlphanumeric("aaaaThis is a test string123")
 	// var parsedText2 = parser.ParseStringToAlphanumeric("How this does is the a cosine test react stringz0123 to changing order") //Jaccard takes a tougher hit than Cosine in this case. Jaccard is probs more sensitive to outliers.
 	var returnStruct = analyzer.CountLetters(parsedText)
 	var returnStruct2 = analyzer.CountLetters(parsedText2)
