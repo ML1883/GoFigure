@@ -106,27 +106,59 @@ func PositionDifferenceVectors(array1 [][]int, array2 [][]int, totalLength int) 
 		Maybe do something with the frequency calc as well to show importance akin to levensthein Algo? Or perhaps include this in different version.
 	*/
 
-	// var averageLeftover float64 = 0
 	var lengthArray1 int = 0
 	var lengthArray2 int = 0
 	var totalDifference float64 = 0
-	//var letterCount int = 0 //How many letters do w have
+	fmt.Printf("totalLength: %v\n", totalLength)
 
 	for i := range array1 {
+		var remainderTotal float64 = 0
 		subArray1 := array1[i]
 		subArray2 := array2[i]
 		lengthArray1 = len(subArray1)
 		lengthArray2 = len(subArray2)
+		// fmt.Printf("Subbaray1: %v\n", subArray1)
+		// fmt.Printf("Subbaray2: %v\n", subArray2)
+		// fmt.Printf("lengthArray1: %v\n", lengthArray1)
+		// fmt.Printf("lengthArray2: %v\n", lengthArray2)
 
 		if lengthArray1 == 0 && lengthArray2 == 0 {
 			continue
 		}
 
 		switch {
+		case lengthArray1 == 0:
+			for j := range lengthArray2 {
+				remainderTotal += float64(subArray2[j])
+			}
+			totalDifference += (remainderTotal / float64(lengthArray2))
+
+		case lengthArray2 == 0:
+			for j := range lengthArray1 {
+				remainderTotal += float64(subArray1[j])
+			}
+			totalDifference += (remainderTotal / float64(lengthArray1))
+
 		case lengthArray1 > lengthArray2:
-			continue
+			for j := range lengthArray2 {
+				totalDifference += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
+			}
+
+			for j := lengthArray2; j < lengthArray1; j++ {
+				remainderTotal += float64(subArray1[j])
+			}
+			totalDifference += (remainderTotal / float64(lengthArray1-lengthArray2))
+
 		case lengthArray1 < lengthArray2:
-			continue
+			for j := range lengthArray1 {
+				totalDifference += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
+			}
+
+			for j := lengthArray1; j < lengthArray2; j++ {
+				remainderTotal += float64(subArray2[j])
+			}
+			totalDifference += (remainderTotal / float64(lengthArray2-lengthArray1))
+
 		case lengthArray1 == lengthArray2:
 			for j := range lengthArray1 {
 				totalDifference += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
