@@ -8,6 +8,7 @@ import (
 
 type lettercount struct {
 	TotalCount        int
+	LetterCount       int
 	LetterNumberArray [36]int //0-9 + 26 letters
 	PositionArray     [36][]int
 }
@@ -29,7 +30,7 @@ func CountLetters(textToCount string) *lettercount {
 				// fmt.Printf("For index %v, plussed position %v with one with character %c\n", index, int(char), char)
 
 			}
-
+			lcText.LetterCount++
 		}
 		lcText.TotalCount++
 	}
@@ -57,8 +58,7 @@ func IntVectorMultiplication(array1 []int, array2 []int) (int, error) {
 
 func CosineSimilarityVectors(array1 []int, array2 []int) float64 {
 	/*Performs consine similarity calculation on two arrays of integers.
-	Resulting in a cosine similairity. We do not check if the arrays have correct sizes.
-	TODO: make this incorporate the position somehow*/
+	Resulting in a cosine similairity. We do not check if the arrays have correct sizes.*/
 	var dotProduct int = 0
 	var magnitudeArray1 int = 0
 	var magnitudeArray2 int = 0
@@ -74,8 +74,7 @@ func CosineSimilarityVectors(array1 []int, array2 []int) float64 {
 }
 
 func JaccardIndexVectors(array1 []int, array2 []int) float64 {
-	/*Calculate the Jaccard idnex of two arrays
-	No error handling.*/
+	/*Calculate the Jaccard idnex of two arrays*/
 	var intersection int = 0
 	var union int = 0
 
@@ -91,28 +90,22 @@ func JaccardIndexVectors(array1 []int, array2 []int) float64 {
 	return float64(intersection) / float64(union)
 }
 
-func PositionDifferenceVectors(array1 [][]int, array2 [][]int, totalLength int) float64 {
+func PositionDifferenceVectors(array1 [][]int, array2 [][]int, totalLength1 int, totalLength2 int) float64 {
 	/*
-		There aren't really any specific formulas for this problem so we will have to use the following algorithm:
-		1. Check if a letter is present in array1 or array2
-		2. If it is present in both, calculate difference
-		3. If it is present in just one, leave it(??)
-		4. If the sizes differ, average out the positions that 'stick out'
-		5. If the sizes don't differ, just calculate differences (absolute numbers here or squaring of numbers depending on how much we want to punish letters being on outlier positions)
-		6. If its present in none we leave it.
-		7. Normalize the difference calculations using the total length of both (or single) arrays such that the difference becomes reduced to an index.
-			-> we will have to find out what the index is that we want here
-
-		Maybe do something with the frequency calc as well to show importance akin to levensthein Algo? Or perhaps include this in different version.
+		Calculate average difference of each number or letter.
+		Calculate the average of that difference across the whole spectrum of numbers and letters.
+		Divide this difference over the max length of either one or two, minus one to normalize it
 	*/
 
 	var lengthArray1 int = 0
 	var lengthArray2 int = 0
-	var totalDifference float64 = 0
-	fmt.Printf("totalLength: %v\n", totalLength)
+	var totalAvgDifference float64 = 0
+	var elementsCalculated int = 0
+	fmt.Printf("totalLengthsum: %v\n", totalLength1+totalLength2)
 
 	for i := range array1 {
 		var remainderTotal float64 = 0
+		var totalAbsDiff float64 = 0
 		subArray1 := array1[i]
 		subArray2 := array2[i]
 		lengthArray1 = len(subArray1)
@@ -126,48 +119,53 @@ func PositionDifferenceVectors(array1 [][]int, array2 [][]int, totalLength int) 
 			continue
 		}
 
+		elementsCalculated++ //Did we find a certain letter? than we will insert something
 		switch {
-		case lengthArray1 == 0:
+		case lengthArray1 == 0: //Calculate the average position and add unchallenged
 			for j := range lengthArray2 {
 				remainderTotal += float64(subArray2[j])
 			}
-			totalDifference += (remainderTotal / float64(lengthArray2))
+			totalAvgDifference += (remainderTotal / float64(lengthArray2))
 
-		case lengthArray2 == 0:
+		case lengthArray2 == 0: //Calculate the average position and add unchallenged
 			for j := range lengthArray1 {
 				remainderTotal += float64(subArray1[j])
 			}
-			totalDifference += (remainderTotal / float64(lengthArray1))
+			totalAvgDifference += (remainderTotal / float64(lengthArray1))
 
-		case lengthArray1 > lengthArray2:
+		case lengthArray1 > lengthArray2: //Calculate the average difference then Calculate the average position and add unchallenged
 			for j := range lengthArray2 {
-				totalDifference += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
+				totalAbsDiff += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
 			}
+			totalAvgDifference += (totalAbsDiff / float64(lengthArray2))
 
 			for j := lengthArray2; j < lengthArray1; j++ {
 				remainderTotal += float64(subArray1[j])
 			}
-			totalDifference += (remainderTotal / float64(lengthArray1-lengthArray2))
+			totalAvgDifference += (remainderTotal / float64(lengthArray1-lengthArray2))
 
 		case lengthArray1 < lengthArray2:
 			for j := range lengthArray1 {
-				totalDifference += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
+				totalAbsDiff += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
 			}
+			totalAvgDifference += (totalAbsDiff / float64(lengthArray1))
 
 			for j := lengthArray1; j < lengthArray2; j++ {
 				remainderTotal += float64(subArray2[j])
 			}
-			totalDifference += (remainderTotal / float64(lengthArray2-lengthArray1))
+			totalAvgDifference += (remainderTotal / float64(lengthArray2-lengthArray1))
 
 		case lengthArray1 == lengthArray2:
 			for j := range lengthArray1 {
-				totalDifference += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
+				totalAbsDiff += math.Abs(float64(subArray1[j]) - float64(subArray2[j]))
 			}
+			totalAvgDifference += (totalAbsDiff / float64(lengthArray1))
+
 		default:
 			continue
 		}
 
 	}
-
-	return float64(totalDifference) / float64(totalLength)
+	var grandTotalAvgDifference float64 = totalAvgDifference / float64(elementsCalculated)
+	return grandTotalAvgDifference / float64(max(totalLength1, totalLength2)-1) /// float64(max(totalLength1, totalLength2)*max(totalLength1, totalLength2))
 }
