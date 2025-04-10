@@ -28,11 +28,11 @@ const (
 // DistributionParameters stores parameters for various probability distributions
 type DistributionParameters struct {
 	Type          DistributionType
-	Mean          float64
-	StdDev        float64
+	Mean          float64 // μ for Normal, exp(μ + σ²/2) for LogNormal
+	StdDev        float64 // σ for Normal, shape parameter for LogNormal
 	Shape         float64 // Alpha for Gamma/Beta, unused for Normal
-	Rate          float64 // Beta for Gamma, unused for Normal
-	Scale         float64 // Used for LogNormal
+	Rate          float64 // Beta for Gamma, Lambda for exponential unused for Normal
+	Scale         float64 // Used for LogNormal. Is pretty much the StdDev of a lognormal distr.
 	EmpiricalCDF  []float64
 	Bins          []float64
 	GoodnessOfFit float64 // Higher is better
@@ -363,7 +363,7 @@ func (m *TextDistributionWithFitting) GetDistributionSummary() string {
 
 // CreateDistributionModelWithFitting builds a statistical model with distribution fitting
 // from multiple text samples
-func CreateDistributionModelWithFitting(textSamples []string, anomalyThreshold float64) (*TextDistributionWithFitting, error) {
+func CreateDistributionModelWithFitting(textSamples []string, anomalyThreshold float64, fitForChoosing float64) (*TextDistributionWithFitting, error) {
 	if len(textSamples) == 0 {
 		return nil, fmt.Errorf("no text samples provided")
 	}
@@ -407,7 +407,7 @@ func CreateDistributionModelWithFitting(textSamples []string, anomalyThreshold f
 
 		// Fit distributions if we have enough data
 		if len(frequencies) >= 5 {
-			model.CharDistributionType[i] = FindBestDistribution(frequencies)
+			model.CharDistributionType[i] = FindBestDistribution(frequencies, fitForChoosing)
 		} else {
 			// Default to normal with calculated parameters
 			model.CharDistributionType[i] = DistributionParameters{
@@ -445,7 +445,7 @@ func CreateDistributionModelWithFitting(textSamples []string, anomalyThreshold f
 
 		// Fit distributions if we have enough data
 		if len(positions) >= 5 {
-			model.PositionDistributionType[i] = FindBestDistribution(positions)
+			model.PositionDistributionType[i] = FindBestDistribution(positions, fitForChoosing)
 		} else {
 			// Default to normal with calculated parameters
 			model.PositionDistributionType[i] = DistributionParameters{
@@ -461,7 +461,7 @@ func CreateDistributionModelWithFitting(textSamples []string, anomalyThreshold f
 
 // FindBestDistribution determines which probability distribution best fits the data
 // Returns distribution parameters for the best fitting distribution
-func FindBestDistribution(data []float64) DistributionParameters {
+func FindBestDistribution(data []float64, fitForChoosing float64) DistributionParameters {
 	if len(data) < 5 {
 		// Not enough data for reliable fitting
 		// TODO: Check if this actually makes sense; normal when youre below 5? why 5?
@@ -505,7 +505,7 @@ func FindBestDistribution(data []float64) DistributionParameters {
 	empiricalParams := createEmpiricalDistribution(sortedData)
 
 	// If best fit is poor, default to empirical
-	if bestScore < 0.8 {
+	if bestScore < fitForChoosing {
 		empiricalParams.GoodnessOfFit = 1.0 // By definition, empirical distribution fits the data perfectly
 		return empiricalParams
 	}
