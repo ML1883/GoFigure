@@ -1,9 +1,10 @@
 package main
 
 import (
-	"GoFigure/pkg/analyzer"
-	"GoFigure/pkg/parser"
 	"fmt"
+
+	"github.com/ML1883/GoFigure/pkg/analyzer"
+	"github.com/ML1883/GoFigure/pkg/parser"
 )
 
 func main() {
@@ -58,26 +59,25 @@ func main() {
 	}
 
 	// Create a distribution model from the training texts
-	model, err := analyzer.CreateDistributionModelWithFitting(trainingTexts, 2.5, 0.8) // 2.5 is the anomaly threshold
+	model, err := analyzer.CreateDistributionFittedModel(trainingTexts, 2.5, 0.8) // 2.5 is the anomaly threshold
 	if err != nil {
 		fmt.Printf("Error creating model: %v\n", err)
 		return
 	}
 
 	// Print model summary
-	fmt.Println(model.ModelSummary())
-	fmt.Println(model.GetDistributionSummary())
+	fmt.Println(model.GetModelSummary())
 
-	// // Save the model
+	// Save the model
 	// modelPath := filepath.Join(".", "text_model.gob")
-	// if err := model.SaveModel(modelPath); err != nil {
+	// if err := model.SaveTextModel(modelPath); err != nil {
 	// 	fmt.Printf("Error saving model: %v\n", err)
 	// 	return
 	// }
 	// fmt.Printf("Model saved to %s\n", modelPath)
 
 	// // Load the model (just to demonstrate)
-	// loadedModel, err := analyzer.LoadModel(modelPath)
+	// loadedModel, err := analyzer.LoadTextModel(modelPath)
 	// if err != nil {
 	// 	fmt.Printf("Error loading model: %v\n", err)
 	// 	return
@@ -86,10 +86,11 @@ func main() {
 
 	// Test text similar to training data
 	normalText := "This is similar to our training texts with numbers 123."
-	isAnomaly, score, anomalies := model.IsAnomaly(normalText)
+	isAnomaly, score, anomalies, probability := model.IsAnomaly(normalText)
 	fmt.Printf("\nNormal Text Analysis:\n")
 	fmt.Printf("Is anomaly: %v\n", isAnomaly)
 	fmt.Printf("Anomaly score: %.2f\n", score)
+	fmt.Printf("Probability of observing this text: %.2f\n", probability)
 
 	if len(anomalies) > 0 {
 		fmt.Println("Top anomalies:")
@@ -101,10 +102,11 @@ func main() {
 
 	// Test text with different distribution
 	anomalousText := "ZZZZZZZZZZ999999999XXXXXXXXXX000000000000000000"
-	isAnomaly, score, anomalies = model.IsAnomaly(anomalousText)
+	isAnomaly, score, anomalies, probability = model.IsAnomaly(anomalousText)
 	fmt.Printf("\nAnomalous Text Analysis:\n")
 	fmt.Printf("Is anomaly: %v\n", isAnomaly)
 	fmt.Printf("Anomaly score: %.2f\n", score)
+	fmt.Printf("Probability of observing this text: %.2f\n", probability)
 
 	if len(anomalies) > 0 {
 		fmt.Println("Top anomalies:")

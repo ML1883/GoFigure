@@ -1,4 +1,4 @@
-module GoFigure
+module github.com/ML1883/GoFigure
 
 go 1.24.0
 
