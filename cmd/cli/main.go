@@ -1,10 +1,11 @@
 package main
 
 import (
-	"GoFigure/pkg/analyzer"
-	"GoFigure/pkg/parser"
 	"flag"
 	"fmt"
+
+	"github.com/ML1883/GoFigure/pkg/analyzer"
+	"github.com/ML1883/GoFigure/pkg/parser"
 )
 
 /*

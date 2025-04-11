@@ -39,7 +39,7 @@ type DistributionParameters struct {
 }
 
 // TextDistributionModel represents the statistical distribution of characters across multiple texts
-type TextDistributionModel struct {
+type TextDistributionFittedModel struct {
 	// Character distributions for letters (a-z) and numbers (0-9). I.e. mean frequency
 	CharDistribution [36]float64
 	// Standard deviation for each character distribution
@@ -52,11 +52,7 @@ type TextDistributionModel struct {
 	SampleCount int
 	// Threshold for anomaly detection
 	AnomalyThreshold float64
-}
 
-// TextDistributionWithFitting extends TextDistributionModel with distribution fitting capabilities
-type TextDistributionWithFitting struct {
-	TextDistributionModel
 	// Distribution type and parameters for each character
 	CharDistributionType [36]DistributionParameters
 	// Raw frequency data collected for each character across samples
@@ -68,312 +64,16 @@ type TextDistributionWithFitting struct {
 	PositionData [36][]float64
 }
 
-// CreateDistributionModel builds a statistical model from multiple text samples
-// It does so by taking position and frequency data and making them realtive to the size of the text, which allows
-// you to pool ltexts of different texts together while mainting meaning data
-// Note: This function assumes character frequencies follow a normal distribution
-// and calculates mean and standard deviation for each character
-func CreateDistributionModel(textSamples []string, anomalyThreshold float64) (*TextDistributionModel, error) {
+// CreateDistributionFittedModel builds a statistical model with distribution fitting
+// from multiple text samples
+func CreateDistributionFittedModel(textSamples []string, anomalyThreshold float64, fitForChoosing float64) (*TextDistributionFittedModel, error) {
 	if len(textSamples) == 0 {
 		return nil, fmt.Errorf("no text samples provided")
 	}
 
-	model := &TextDistributionModel{
+	model := &TextDistributionFittedModel{
 		SampleCount:      len(textSamples),
 		AnomalyThreshold: anomalyThreshold,
-	}
-
-	// Collect letter data from all samples
-	var allLetterData []*LetterData
-	for _, text := range textSamples {
-		letterData := AnalyzeLettersFromText(text)
-		allLetterData = append(allLetterData, letterData)
-	}
-
-	// Calculate mean distribution for each character
-	// We do this loop as a slice through of each character
-	for i := 0; i < 36; i++ {
-		var sum float64
-		var positions []float64
-
-		// Gather frequencies and positions for this character across all samples
-		for _, ld := range allLetterData {
-			// Calculate relative frequency (normalized by text length) so we can pool them together over different texts
-			if ld.TotalCount > 0 {
-				relFreq := float64(ld.LetterNumberArray[i]) / float64(ld.TotalCount)
-				sum += relFreq
-
-				// Calculate relative positions (normalized by text length)
-				// Creates an array of relative locations so we can pool them together over different texts
-				for _, pos := range ld.PositionArray[i] {
-					relPos := float64(pos) / float64(ld.TotalCount)
-					positions = append(positions, relPos)
-				}
-			}
-		}
-
-		//Calculate mean and standard deviations for our relative frequencies and relative positions.
-		if len(positions) > 0 {
-			model.CharDistribution[i] = stat.Mean(positions, nil)
-			if len(positions) > 1 {
-				model.CharStdDev[i] = stat.StdDev(positions, nil)
-			}
-		}
-
-		if len(positions) > 0 {
-			model.PositionDistribution[i] = stat.Mean(positions, nil)
-			if len(positions) > 1 {
-				model.PositionStdDev[i] = stat.StdDev(positions, nil)
-			}
-		}
-
-		// Set mean frequency. This is the mean of all % of a text being a single characters.
-		// If one text is 40% c's and the other is 60% c's, this becomes 50%.
-		// model.CharDistribution[i] = sum / float64(len(textSamples))
-
-		// // Calculate mean position if we have positions
-		// if len(positions) > 0 {
-		// 	var posSum float64
-		// 	for _, pos := range positions {
-		// 		posSum += pos
-		// 	}
-		// 	model.PositionDistribution[i] = posSum / float64(len(positions))
-		// }
-
-		// // Calculate standard deviations for frequency
-		// var freqSumSq float64
-		// for _, ld := range allLetterData {
-		// 	if ld.TotalCount > 0 {
-		// 		relFreq := float64(ld.LetterNumberArray[i]) / float64(ld.TotalCount)
-		// 		diff := relFreq - model.CharDistribution[i]
-		// 		freqSumSq += diff * diff
-		// 	}
-		// }
-
-		// if len(textSamples) > 1 {
-		// 	model.CharStdDev[i] = math.Sqrt(freqSumSq / float64(len(textSamples)-1))
-		// }
-
-		// // Calculate position standard deviation
-		// if len(positions) > 1 {
-		// 	var posSumSq float64
-		// 	for _, pos := range positions {
-		// 		diff := pos - model.PositionDistribution[i]
-		// 		posSumSq += diff * diff
-		// 	}
-		// 	model.PositionStdDev[i] = math.Sqrt(posSumSq / float64(len(positions)-1))
-		// }
-	}
-
-	return model, nil
-}
-
-// AnomalyScore calculates how different a text is from the distribution model
-// Returns a score and anomalous character information
-// Note: This method assumes character frequencies follow a normal distribution
-// and uses z-scores (standard deviations from the mean) to detect anomalies
-// TODO: check the aggregation
-func (m *TextDistributionModel) AnomalyScore(text string) (float64, map[string]float64) {
-	// Analyze the text
-	letterData := AnalyzeLettersFromText(text)
-
-	// Calculate z-scores for each character
-	zScores := make(map[string]float64)
-	var totalScore float64
-	var significantDeviations int
-
-	for i := 0; i < 36; i++ {
-		// Skip characters with no distribution data
-		if m.CharStdDev[i] == 0 {
-			continue
-		}
-
-		// Calculate relative frequency for this character
-		var relFreq float64
-		if letterData.TotalCount > 0 {
-			relFreq = float64(letterData.LetterNumberArray[i]) / float64(letterData.TotalCount)
-		}
-
-		// Calculate z-score (how many standard deviations from the mean)
-		zScore := math.Abs(relFreq-m.CharDistribution[i]) / m.CharStdDev[i]
-
-		// Only count significant deviations
-		if zScore > 1.0 {
-			var charLabel string
-			if i < 10 {
-				// It's a number
-				charLabel = fmt.Sprintf("%d", i)
-			} else {
-				// It's a letter (a=10, b=11, etc.)
-				charLabel = string(rune('a' + (i - 10)))
-			}
-
-			zScores[charLabel] = zScore
-			totalScore += zScore
-			significantDeviations++
-		}
-	}
-
-	// Calculate position deviation
-	// TODO: This should be done with best fitting distribution for position. Not just normal distribution
-	for i := 0; i < 36; i++ {
-		// Skip characters with no position data
-		if len(letterData.PositionArray[i]) == 0 || m.PositionStdDev[i] == 0 {
-			continue
-		}
-
-		// Calculate average position for this character in the text
-		var posSum float64
-		for _, pos := range letterData.PositionArray[i] {
-			relPos := float64(pos) / float64(letterData.TotalCount)
-			posSum += relPos
-		}
-		avgPos := posSum / float64(len(letterData.PositionArray[i]))
-
-		// Calculate position z-score
-		posZScore := math.Abs(avgPos-m.PositionDistribution[i]) / m.PositionStdDev[i]
-
-		if posZScore > 1.0 {
-			var charLabel string
-			if i < 10 {
-				charLabel = fmt.Sprintf("pos_%d", i)
-			} else {
-				charLabel = fmt.Sprintf("pos_%s", string(rune('a'+(i-10))))
-			}
-
-			zScores[charLabel] = posZScore
-			totalScore += posZScore
-			significantDeviations++
-		}
-	}
-
-	// Normalize the score based on number of significant deviations
-	if significantDeviations > 0 {
-		totalScore /= float64(significantDeviations)
-	}
-
-	return totalScore, zScores
-}
-
-// IsAnomaly determines if a text is anomalous compared to the model
-func (m *TextDistributionModel) IsAnomaly(text string) (bool, float64, map[string]float64) {
-	score, anomalies := m.AnomalyScore(text)
-	return score > m.AnomalyThreshold, score, anomalies //TODO: check if looking at the aggregated scores makes sense🐢
-}
-
-// GetTopAnomalies returns the top n anomalous characters sorted by z-score
-func (m *TextDistributionModel) GetTopAnomalies(text string, n int) []string {
-	_, anomalies := m.AnomalyScore(text)
-
-	// Convert map to slice for sorting
-	type anomalyEntry struct {
-		char  string
-		score float64
-	}
-
-	var entries []anomalyEntry
-	for char, score := range anomalies {
-		entries = append(entries, anomalyEntry{char, score})
-	}
-
-	// Sort by score (descending)
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].score > entries[j].score
-	})
-
-	// Get top n results
-	var results []string
-	for i := 0; i < min(n, len(entries)); i++ {
-		results = append(results, fmt.Sprintf("%s (%.2f)", entries[i].char, entries[i].score))
-	}
-
-	return results
-}
-
-// ModelSummary returns a string summary of the distribution model
-// TODO: combine with the other fucntion
-func (m *TextDistributionModel) ModelSummary() string {
-	var sb strings.Builder
-
-	sb.WriteString("Distribution Model Summary:\n")
-	sb.WriteString(fmt.Sprintf("Based on %d text samples\n", m.SampleCount))
-	sb.WriteString(fmt.Sprintf("Anomaly threshold: %.2f\n\n", m.AnomalyThreshold))
-
-	sb.WriteString("Character frequency distribution:\n")
-	for i := 0; i < 36; i++ {
-		var char string
-		if i < 10 {
-			char = fmt.Sprintf("%d", i)
-		} else {
-			char = string(rune('a' + (i - 10)))
-		}
-
-		sb.WriteString(fmt.Sprintf("%s: %.4f (±%.4f)\n",
-			char, m.CharDistribution[i], m.CharStdDev[i]))
-		// sb.WriteString(fmt.Sprintf("Best distribution for character: %s is the distribution: %s \n", char, m.))
-	}
-
-	return sb.String()
-}
-
-// GetDistributionSummary returns a string summary of the fitted distributions
-func (m *TextDistributionWithFitting) GetDistributionSummary() string {
-	var sb strings.Builder
-
-	sb.WriteString("Fitted Distribution Model Summary:\n")
-	sb.WriteString(fmt.Sprintf("Based on %d text samples\n", m.SampleCount))
-	sb.WriteString(fmt.Sprintf("Anomaly threshold: %.2f\n\n", m.AnomalyThreshold))
-
-	sb.WriteString("Character distribution types:\n")
-	for i := 0; i < 36; i++ {
-		if len(m.CharFrequencyData[i]) == 0 {
-			continue
-		}
-
-		var char string
-		if i < 10 {
-			char = fmt.Sprintf("%d", i)
-		} else {
-			char = string(rune('a' + (i - 10)))
-		}
-
-		dist := m.CharDistributionType[i]
-
-		sb.WriteString(fmt.Sprintf("%s: %s distribution (fit: %.2f)\n",
-			char, dist.Type, dist.GoodnessOfFit))
-
-		switch dist.Type {
-		case NormalDist:
-			sb.WriteString(fmt.Sprintf("   Mean: %.4f, StdDev: %.4f\n", dist.Mean, dist.StdDev))
-		case GammaDist:
-			sb.WriteString(fmt.Sprintf("   Shape: %.4f, Rate: %.4f\n", dist.Shape, dist.Rate))
-		case BetaDist:
-			sb.WriteString(fmt.Sprintf("   Alpha: %.4f, Beta: %.4f\n", dist.Shape, dist.Rate))
-		case ExponentialDist:
-			sb.WriteString(fmt.Sprintf("   Rate: %.4f\n", dist.Rate))
-		case LogNormalDist:
-			sb.WriteString(fmt.Sprintf("   Mu: %.4f, Sigma: %.4f\n", dist.Shape, dist.Scale))
-		case EmpiricalDist:
-			sb.WriteString(fmt.Sprintf("   Sample size: %d\n", len(dist.Bins)))
-		}
-	}
-
-	return sb.String()
-}
-
-// CreateDistributionModelWithFitting builds a statistical model with distribution fitting
-// from multiple text samples
-func CreateDistributionModelWithFitting(textSamples []string, anomalyThreshold float64, fitForChoosing float64) (*TextDistributionWithFitting, error) {
-	if len(textSamples) == 0 {
-		return nil, fmt.Errorf("no text samples provided")
-	}
-
-	// Initialize the model
-	model := &TextDistributionWithFitting{
-		TextDistributionModel: TextDistributionModel{
-			SampleCount:      len(textSamples),
-			AnomalyThreshold: anomalyThreshold,
-		},
 	}
 
 	// Collect letter data from all samples
@@ -399,9 +99,9 @@ func CreateDistributionModelWithFitting(textSamples []string, anomalyThreshold f
 
 		// Calculate basic statistics
 		if len(frequencies) > 0 {
-			model.TextDistributionModel.CharDistribution[i] = stat.Mean(frequencies, nil)
+			model.CharDistribution[i] = stat.Mean(frequencies, nil)
 			if len(frequencies) > 1 {
-				model.TextDistributionModel.CharStdDev[i] = stat.StdDev(frequencies, nil)
+				model.CharStdDev[i] = stat.StdDev(frequencies, nil)
 			}
 		}
 
@@ -412,14 +112,13 @@ func CreateDistributionModelWithFitting(textSamples []string, anomalyThreshold f
 			// Default to normal with calculated parameters
 			model.CharDistributionType[i] = DistributionParameters{
 				Type:   NormalDist,
-				Mean:   model.TextDistributionModel.CharDistribution[i],
-				StdDev: model.TextDistributionModel.CharStdDev[i],
+				Mean:   model.CharDistribution[i],
+				StdDev: model.CharStdDev[i],
 			}
 		}
 	}
 
 	// Position distributions
-	// TODO: This should probs have a distribution of its own, or perhaps be combined with the frequency distribution.
 	for i := 0; i < 36; i++ {
 		var positions []float64
 
@@ -435,23 +134,23 @@ func CreateDistributionModelWithFitting(textSamples []string, anomalyThreshold f
 
 		// Calculate position statistics
 		if len(positions) > 0 {
-			model.TextDistributionModel.PositionDistribution[i] = stat.Mean(positions, nil)
+			model.PositionDistribution[i] = stat.Mean(positions, nil)
 			if len(positions) > 1 {
-				model.TextDistributionModel.PositionStdDev[i] = stat.StdDev(positions, nil)
+				model.PositionStdDev[i] = stat.StdDev(positions, nil)
 			}
 		}
 
 		model.PositionData[i] = positions
 
-		// Fit distributions if we have enough data
+		// Fit distributions if N>=5
 		if len(positions) >= 5 {
 			model.PositionDistributionType[i] = FindBestDistribution(positions, fitForChoosing)
 		} else {
 			// Default to normal with calculated parameters
 			model.PositionDistributionType[i] = DistributionParameters{
 				Type:   NormalDist,
-				Mean:   model.TextDistributionModel.CharDistribution[i],
-				StdDev: model.TextDistributionModel.CharStdDev[i],
+				Mean:   model.CharDistribution[i],
+				StdDev: model.CharStdDev[i],
 			}
 		}
 	}
@@ -860,8 +559,8 @@ func empiricalProbability(x float64, data []float64) float64 {
 	return sum / (n * h * math.Sqrt(2*math.Pi))
 }
 
-// AnomalyScoreWithFitting calculates how different a text is from the fitted distributions
-func (m *TextDistributionWithFitting) AnomalyScoreWithFitting(text string) (float64, map[string]float64) {
+// AnomalyScore calculates how different a text is from the fitted distributions
+func (m *TextDistributionFittedModel) AnomalyScore(text string) (float64, map[string]float64, float64) {
 	// Analyze the text
 	letterData := AnalyzeLettersFromText(text)
 
@@ -869,6 +568,7 @@ func (m *TextDistributionWithFitting) AnomalyScoreWithFitting(text string) (floa
 	anomalyScores := make(map[string]float64)
 	var totalScore float64
 	var significantDeviations int
+	var calculatedProb float64
 
 	for i := 0; i < 36; i++ {
 		// Skip characters with no distribution data
@@ -885,6 +585,7 @@ func (m *TextDistributionWithFitting) AnomalyScoreWithFitting(text string) (floa
 		// Calculate probability of observing this frequency
 		prob := m.CharDistributionType[i].CalculateProbability(relFreq)
 
+		calculatedProb = prob
 		// Convert to anomaly score (lower probability = higher anomaly)
 		// Use negative log probability as anomaly score
 		var anomalyScore float64
@@ -917,18 +618,117 @@ func (m *TextDistributionWithFitting) AnomalyScoreWithFitting(text string) (floa
 		totalScore /= float64(significantDeviations)
 	}
 
-	return totalScore, anomalyScores
+	return totalScore, anomalyScores, calculatedProb
 }
 
-// IsAnomalyWithFitting determines if a text is anomalous using fitted distributions
-func (m *TextDistributionWithFitting) IsAnomalyWithFitting(text string) (bool, float64, map[string]float64) {
-	score, anomalies := m.AnomalyScoreWithFitting(text)
-	return score > m.AnomalyThreshold, score, anomalies
+// GetTopAnomalies returns the top n anomalous characters sorted by z-score
+func (m *TextDistributionFittedModel) GetTopAnomalies(text string, n int) []string {
+	_, anomalies, _ := m.AnomalyScore(text)
+
+	// Convert map to slice for sorting
+	type anomalyEntry struct {
+		char  string
+		score float64
+	}
+
+	var entries []anomalyEntry
+	for char, score := range anomalies {
+		entries = append(entries, anomalyEntry{char, score})
+	}
+
+	// Sort by score (descending)
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].score > entries[j].score
+	})
+
+	// Get top n results
+	var results []string
+	for i := 0; i < min(n, len(entries)); i++ {
+		results = append(results, fmt.Sprintf("%s (%.2f)", entries[i].char, entries[i].score))
+	}
+
+	return results
 }
 
-// SaveModel saves the distribution model to a file
+// IsAnomaly determines if a text is anomalous using fitted distributions
+func (m *TextDistributionFittedModel) IsAnomaly(text string) (bool, float64, map[string]float64, float64) {
+	score, anomalies, probability := m.AnomalyScore(text)
+	return score > m.AnomalyThreshold, score, anomalies, probability
+}
+
+// GetModelSummary returns a string summary of the fitted distributions
+func (m *TextDistributionFittedModel) GetModelSummary() string {
+	var sb strings.Builder
+
+	sb.WriteString("Fitted Distribution Model Summary:\n")
+	sb.WriteString(fmt.Sprintf("Based on %d text samples\n", m.SampleCount))
+	sb.WriteString(fmt.Sprintf("Anomaly threshold: %.2f\n\n", m.AnomalyThreshold))
+
+	sb.WriteString("Character distribution types:\n")
+	for i := 0; i < 36; i++ {
+		if len(m.CharFrequencyData[i]) == 0 {
+			continue
+		}
+
+		var char string
+		if i < 10 {
+			char = fmt.Sprintf("%d", i)
+		} else {
+			char = string(rune('a' + (i - 10)))
+		}
+
+		sb.WriteString(fmt.Sprintf("======%s: Frequency mean: %.4f (StdDev: ±%.4f)======\n",
+			char, m.CharDistribution[i], m.CharStdDev[i]))
+		sb.WriteString(fmt.Sprintf("=====%s: Position mean: %.4f (StdDev: ±%.4f)=====\n",
+			char, m.PositionDistribution[i], m.PositionStdDev[i]))
+		dist := m.CharDistributionType[i]
+
+		sb.WriteString(fmt.Sprintf("%s frequency: %s distribution (fit: %.2f)\n",
+			char, dist.Type, dist.GoodnessOfFit))
+
+		switch dist.Type {
+		case NormalDist:
+			sb.WriteString(fmt.Sprintf("   Mean: %.4f, StdDev: %.4f\n", dist.Mean, dist.StdDev))
+		case GammaDist:
+			sb.WriteString(fmt.Sprintf("   Shape: %.4f, Rate: %.4f\n", dist.Shape, dist.Rate))
+		case BetaDist:
+			sb.WriteString(fmt.Sprintf("   Alpha: %.4f, Beta: %.4f\n", dist.Shape, dist.Rate))
+		case ExponentialDist:
+			sb.WriteString(fmt.Sprintf("   Rate: %.4f\n", dist.Rate))
+		case LogNormalDist:
+			sb.WriteString(fmt.Sprintf("   Mu: %.4f, Sigma: %.4f\n", dist.Shape, dist.Scale))
+		case EmpiricalDist:
+			sb.WriteString(fmt.Sprintf("   Sample size: %d\n", len(dist.Bins)))
+		}
+
+		distPosition := m.PositionDistributionType[i]
+
+		sb.WriteString(fmt.Sprintf("%s position: %s distribution (fit: %.2f)\n",
+			char, distPosition.Type, distPosition.GoodnessOfFit))
+
+		switch distPosition.Type {
+		case NormalDist:
+			sb.WriteString(fmt.Sprintf("   Mean: %.4f, StdDev: %.4f\n", distPosition.Mean, distPosition.StdDev))
+		case GammaDist:
+			sb.WriteString(fmt.Sprintf("   Shape: %.4f, Rate: %.4f\n", distPosition.Shape, distPosition.Rate))
+		case BetaDist:
+			sb.WriteString(fmt.Sprintf("   Alpha: %.4f, Beta: %.4f\n", distPosition.Shape, distPosition.Rate))
+		case ExponentialDist:
+			sb.WriteString(fmt.Sprintf("   Rate: %.4f\n", distPosition.Rate))
+		case LogNormalDist:
+			sb.WriteString(fmt.Sprintf("   Mu: %.4f, Sigma: %.4f\n", distPosition.Shape, distPosition.Scale))
+		case EmpiricalDist:
+			sb.WriteString(fmt.Sprintf("   Sample size: %d\n", len(distPosition.Bins)))
+		}
+
+	}
+
+	return sb.String()
+}
+
+// SaveTextModel saves the distribution model to a file
 // TODO: generalize to all models
-func (m *TextDistributionModel) SaveModel(filename string) error {
+func (m *TextDistributionFittedModel) SaveTextModel(filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
 		return err
@@ -944,16 +744,16 @@ func (m *TextDistributionModel) SaveModel(filename string) error {
 	return nil
 }
 
-// LoadModel loads a distribution model from a file
+// LoadTextModel loads a distribution model from a file
 // TODO: generalize to all models
-func LoadModel(filename string) (*TextDistributionModel, error) {
+func LoadTextModel(filename string) (*TextDistributionFittedModel, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	var model TextDistributionModel
+	var model TextDistributionFittedModel
 	decoder := gob.NewDecoder(file)
 	err = decoder.Decode(&model)
 	if err != nil {

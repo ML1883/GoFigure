@@ -1,9 +1,36 @@
 # GoFigure
-Note: this is work in progress.
-A program to compare the similarity of two texts in a very simple manner using Go. This is still work in progress.
+NOTE: this is work in progress.
+A program to compare the similarity of texts in a very simple manner using Go.
 
-The end result will be a CLI program that calculates a value/array of values of a text such that a text will always get the same value assigned to it.
+## Overview
 
-I also want to build a model such that I can figure out if a text falls outside of expectations given a new input.
+The `analyzer` package processes and compares text based on the distribution and position of characters (letters a–z and digits 0–9). It’s designed for use cases like anomaly detection, text similarity, and distribution modeling. The `parses` package provides basic parsing and file operations.
 
-However, I might decide to build that in another langauage if that is more convinient.
+## Features
+
+- **Character Frequency Analysis**  
+  Parses input text and counts occurrences and positions of all alphanumeric characters.
+
+- **Vector Similarity Metrics**
+  - Cosine Similarity
+  - Jaccard Index
+  - Position Difference Score (a custom measure to handle the odd shapes these might take)
+
+- **Statistical Distribution Fitting & Scoring**  
+  Builds statistical models from multiple text samples, estimating mean, standard deviation, and fitting probability distributions (normal, gamma, beta, etc.) to the frequency and position data of the characters found in the texts. Automatically selects best-fit distributions using statistical metrics for each character.
+
+## Internal Design
+
+- Characters are mapped into a 36-element space: 0–9 for digits and 10–35 for a–z.
+- Position-based comparison normalizes indexes relative to total text length.
+- Distribution fitting leverages `gonum/stat` for statistical functions.
+
+## Installation
+
+```bash
+go get github.com/ML1883/GoFigure
+```
+
+## Dependencies
+
+- [Gonum](https://github.com/gonum/gonum) – for statistical functions and distribution fitting
