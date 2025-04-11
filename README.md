@@ -1,6 +1,7 @@
 # GoFigure
-NOTE: this is work in progress.
-A program to compare the similarity of texts in a very simple manner using Go.
+NOTE: this is work in progress.\\
+
+This is a program to compare the similarity of texts in Go using letter frequency and position counting. I am not sure how well this method works compared to different techniques of comparing text similairity, but the idea of comparing texts using exact/analytical measures (i.e. frequency counting and such) as opposed to statistical interested me, and that is why I created this module. I also wanted to try out the programming language Go for the first time.
 
 ## Overview
 
