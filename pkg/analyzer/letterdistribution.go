@@ -215,9 +215,16 @@ func fitNormal(data []float64) (DistributionParameters, float64) {
 		Sigma: std,
 	}
 
-	score := goodnessOfFitKS(data, func(x float64) float64 {
-		return normal.CDF(x)
-	})
+	var score float64
+	if len(data) >= 30 {
+		score = goodnessOfFitISE(data, func(x float64) float64 {
+			return normal.CDF(x)
+		})
+	} else {
+		score = goodnessOfFitKS(data, func(x float64) float64 {
+			return normal.CDF(x)
+		})
+	}
 
 	return DistributionParameters{
 		Type:   NormalDist,
@@ -246,9 +253,16 @@ func fitGamma(data []float64) (DistributionParameters, float64) {
 		Beta:  beta,
 	}
 
-	score := goodnessOfFitKS(data, func(x float64) float64 {
-		return gamma.CDF(x)
-	})
+	var score float64
+	if len(data) >= 30 {
+		score = goodnessOfFitISE(data, func(x float64) float64 {
+			return gamma.CDF(x)
+		})
+	} else {
+		score = goodnessOfFitKS(data, func(x float64) float64 {
+			return gamma.CDF(x)
+		})
+	}
 
 	return DistributionParameters{
 		Type:   GammaDist,
@@ -290,9 +304,16 @@ func fitBeta(data []float64) (DistributionParameters, float64) {
 		Beta:  beta,
 	}
 
-	score := goodnessOfFitKS(data, func(x float64) float64 {
-		return betaDist.CDF(x)
-	})
+	var score float64
+	if len(data) >= 30 {
+		score = goodnessOfFitISE(data, func(x float64) float64 {
+			return betaDist.CDF(x)
+		})
+	} else {
+		score = goodnessOfFitKS(data, func(x float64) float64 {
+			return betaDist.CDF(x)
+		})
+	}
 
 	return DistributionParameters{
 		Type:   BetaDist,
@@ -324,9 +345,16 @@ func fitExponential(data []float64) (DistributionParameters, float64) {
 		Rate: lambda,
 	}
 
-	score := goodnessOfFitKS(data, func(x float64) float64 {
-		return exp.CDF(x)
-	})
+	var score float64
+	if len(data) >= 30 {
+		score = goodnessOfFitISE(data, func(x float64) float64 {
+			return exp.CDF(x)
+		})
+	} else {
+		score = goodnessOfFitKS(data, func(x float64) float64 {
+			return exp.CDF(x)
+		})
+	}
 
 	return DistributionParameters{
 		Type:   ExponentialDist,
@@ -357,9 +385,16 @@ func fitLogNormal(data []float64) (DistributionParameters, float64) {
 		Sigma: sigma,
 	}
 
-	score := goodnessOfFitKS(data, func(x float64) float64 {
-		return lnorm.CDF(x)
-	})
+	var score float64
+	if len(data) >= 30 {
+		score = goodnessOfFitISE(data, func(x float64) float64 {
+			return lnorm.CDF(x)
+		})
+	} else {
+		score = goodnessOfFitKS(data, func(x float64) float64 {
+			return lnorm.CDF(x)
+		})
+	}
 
 	// Calculate actual mean and std in original space
 	mean := math.Exp(mu + sigma*sigma/2)
@@ -460,7 +495,6 @@ func goodnessOfFitISE(data []float64, cdf func(float64) float64) float64 {
 	mse := sumSquaredDiffs / n
 
 	// Convert to a score where 1 = perfect fit, 0 = terrible fit
-	// This scaling is arbitrary and can be adjusted as needed
 	score := 1.0 / (1.0 + mse)
 
 	return score
