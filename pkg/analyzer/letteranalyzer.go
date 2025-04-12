@@ -56,10 +56,8 @@ func IntVectorMultiplication(array1 []int, array2 []int) (int, error) {
 
 // Performs consine similarity calculation on two arrays of integers.
 // Resulting in a cosine similairity. We do not check if the arrays have correct sizes.
-// Return range: [-1,1]
-// Where 1 is complete similairity
-// 0 is no similairity
-// -1 is complete opposites
+// Return range: [-1,1].
+// Where 1 is complete similairity, 0 is no similairity, -1 is complete opposites
 func CosineSimilarityVectors(array1 []int, array2 []int) float64 {
 	var dotProduct int = 0
 	var magnitudeArray1 int = 0
