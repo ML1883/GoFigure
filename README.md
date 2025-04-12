@@ -20,17 +20,51 @@ The `analyzer` package processes and compares text based on the distribution and
 - **Statistical Distribution Fitting & Scoring**  
   Builds statistical models from multiple text samples, estimating mean, standard deviation, and fitting probability distributions (normal, gamma, beta, etc.) to the frequency and position data of the characters found in the texts. Automatically selects best-fit distributions using statistical metrics for each character.
 
+## Installation
+
+```bash
+go get github.com/ML1883/GoFigure
+```
+
 ## Internal Design
 
 - Characters are mapped into a 36-element space: 0–9 for digits and 10–35 for a–z.
 - Position-based comparison normalizes indexes relative to total text length.
 - Distribution fitting leverages `gonum/stat` for statistical functions.
 
-## Installation
+## Command-Line Interface
+
+The `cmd` directory contains a CLI application that makes the package's functionality available through command-line arguments:
+
+### Comparison Mode
 
 ```bash
-go get github.com/ML1883/GoFigure
+# Compare two files
+./program -compare -file -text1=file1.txt -text2=file2.txt
+
+# Interactive text comparison
+./program -compare
 ```
+
+### Distribution Mode
+
+```bash
+# Create a distribution model from training texts
+./program -distribution -create-model -folder=./training_texts -model-file=model.gob
+
+# Check text against an existing model
+./program -distribution -use-model -model-file=model.gob -check-text=sample.txt
+
+# Interactive analysis with existing model
+./program -distribution -use-model -model-file=model.gob
+```
+
+### Additional Options
+
+- `-output`: Show detailed vectors and statistical arrays
+- `-threshold=2.0`: Adjust anomaly detection sensitivity (higher = more strict)
+- `-fit-threshold=0.8`: Control distribution fitting (higher = more empirical)
+- `-help`: Display help information
 
 ## Dependencies
 
