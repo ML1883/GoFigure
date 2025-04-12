@@ -6,15 +6,13 @@ import (
 	"unicode"
 )
 
+// Parses a string to alphanumeric characters and spaces only.
 func ParseStringToAlphanumeric(textToParse string) string {
-	/*Parses a string to alphanumeric characters and spaces only.
-	 */
 	var result strings.Builder
 
 	for _, char := range textToParse {
 		if unicode.IsLetter(char) || unicode.IsNumber(char) || unicode.IsSpace(char) {
 			result.WriteRune(char)
-			// fmt.Printf("Character appended: %c at index %v\n", char, index)
 		}
 	}
 

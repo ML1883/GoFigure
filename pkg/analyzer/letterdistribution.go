@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	//"gonum.org/v1/gonum/floats"
 	"gonum.org/v1/gonum/stat"
 	"gonum.org/v1/gonum/stat/distuv"
 )
@@ -30,9 +29,9 @@ type DistributionParameters struct {
 	Type          DistributionType
 	Mean          float64 // μ for Normal, exp(μ + σ²/2) for LogNormal
 	StdDev        float64 // σ for Normal, shape parameter for LogNormal
-	Shape         float64 // Alpha for Gamma/Beta, unused for Normal
-	Rate          float64 // Beta for Gamma, Lambda for exponential unused for Normal
-	Scale         float64 // Used for LogNormal. Is pretty much the StdDev of a lognormal distr.
+	Shape         float64 // Alpha for Gamma/Beta
+	Rate          float64 // Beta for Gamma, Lambda for exponential
+	Scale         float64 // StdDev for LogNormal.
 	EmpiricalCDF  []float64
 	Bins          []float64
 	GoodnessOfFit float64 // Higher is better
@@ -40,14 +39,14 @@ type DistributionParameters struct {
 
 // TextDistributionModel represents the statistical distribution of characters across multiple texts
 type TextDistributionFittedModel struct {
-	// Character distributions for letters (a-z) and numbers (0-9). I.e. mean frequency
-	CharDistribution [36]float64
+	// Mean frequency for letters (a-z) and numbers (0-9).
+	CharRelativeMeanFrequency [36]float64
 	// Standard deviation for each character distribution
-	CharStdDev [36]float64
-	// Position distributions (mean position of each character relative to text length) TODO: check if we want this
-	PositionDistribution [36]float64
+	CharRelativeStdDev [36]float64
+	// Mean position of each character relative to text length
+	PositionRelativeMean [36]float64
 	// Position standard deviation
-	PositionStdDev [36]float64
+	PositionRelativeStdDev [36]float64
 	// Total samples used to build the model
 	SampleCount int
 	// Threshold for anomaly detection
@@ -64,8 +63,8 @@ type TextDistributionFittedModel struct {
 	PositionData [36][]float64
 }
 
-// CreateDistributionFittedModel builds a statistical model with distribution fitting
-// from multiple text samples
+// CreateDistributionFittedModel builds a the TextDistributionFittedModel struct with distribution fitting
+// using multiple text samples
 func CreateDistributionFittedModel(textSamples []string, anomalyThreshold float64, fitForChoosing float64) (*TextDistributionFittedModel, error) {
 	if len(textSamples) == 0 {
 		return nil, fmt.Errorf("no text samples provided")
@@ -76,15 +75,16 @@ func CreateDistributionFittedModel(textSamples []string, anomalyThreshold float6
 		AnomalyThreshold: anomalyThreshold,
 	}
 
-	// Collect letter data from all samples
+	// Buld structs for each of the samples in array of strings we get
 	var allLetterData []*LetterData
 	for _, text := range textSamples {
 		letterData := AnalyzeLettersFromText(text)
 		allLetterData = append(allLetterData, letterData)
 	}
 
-	// Process each character
+	// Process the letter data structs per character
 	for i := 0; i < 36; i++ {
+
 		// Collect frequency data for this character across all samples
 		var frequencies []float64
 		for _, ld := range allLetterData {
@@ -99,9 +99,9 @@ func CreateDistributionFittedModel(textSamples []string, anomalyThreshold float6
 
 		// Calculate basic statistics
 		if len(frequencies) > 0 {
-			model.CharDistribution[i] = stat.Mean(frequencies, nil)
+			model.CharRelativeMeanFrequency[i] = stat.Mean(frequencies, nil)
 			if len(frequencies) > 1 {
-				model.CharStdDev[i] = stat.StdDev(frequencies, nil)
+				model.CharRelativeStdDev[i] = stat.StdDev(frequencies, nil)
 			}
 		}
 
@@ -109,20 +109,18 @@ func CreateDistributionFittedModel(textSamples []string, anomalyThreshold float6
 		if len(frequencies) >= 5 {
 			model.CharDistributionType[i] = FindBestDistribution(frequencies, fitForChoosing)
 		} else {
-			// Default to normal with calculated parameters
 			model.CharDistributionType[i] = DistributionParameters{
-				Type:   NormalDist,
-				Mean:   model.CharDistribution[i],
-				StdDev: model.CharStdDev[i],
+				Type:   NormalDist, //normal if there's too little data
+				Mean:   model.CharRelativeMeanFrequency[i],
+				StdDev: model.CharRelativeStdDev[i],
 			}
 		}
 	}
 
-	// Position distributions
+	// Position distributions; we do the exact same thing as characters, but now for the positions
 	for i := 0; i < 36; i++ {
 		var positions []float64
 
-		// Gather positions for this character across all samples
 		for _, ld := range allLetterData {
 			if ld.TotalCount > 0 {
 				for _, pos := range ld.PositionArray[i] {
@@ -132,25 +130,22 @@ func CreateDistributionFittedModel(textSamples []string, anomalyThreshold float6
 			}
 		}
 
-		// Calculate position statistics
 		if len(positions) > 0 {
-			model.PositionDistribution[i] = stat.Mean(positions, nil)
+			model.PositionRelativeMean[i] = stat.Mean(positions, nil)
 			if len(positions) > 1 {
-				model.PositionStdDev[i] = stat.StdDev(positions, nil)
+				model.PositionRelativeStdDev[i] = stat.StdDev(positions, nil)
 			}
 		}
 
 		model.PositionData[i] = positions
 
-		// Fit distributions if N>=5
 		if len(positions) >= 5 {
 			model.PositionDistributionType[i] = FindBestDistribution(positions, fitForChoosing)
 		} else {
-			// Default to normal with calculated parameters
 			model.PositionDistributionType[i] = DistributionParameters{
 				Type:   NormalDist,
-				Mean:   model.CharDistribution[i],
-				StdDev: model.CharStdDev[i],
+				Mean:   model.CharRelativeMeanFrequency[i],
+				StdDev: model.CharRelativeStdDev[i],
 			}
 		}
 	}
@@ -158,12 +153,10 @@ func CreateDistributionFittedModel(textSamples []string, anomalyThreshold float6
 	return model, nil
 }
 
-// FindBestDistribution determines which probability distribution best fits the data
+// FindBestDistribution determines which probability distribution best fits the given relative data
 // Returns distribution parameters for the best fitting distribution
 func FindBestDistribution(data []float64, fitForChoosing float64) DistributionParameters {
-	if len(data) < 5 {
-		// Not enough data for reliable fitting
-		// TODO: Check if this actually makes sense; normal when youre below 5? why 5?
+	if len(data) < 5 { //Double check if we have enough data, even if this is done before.
 		mean, std := stat.MeanStdDev(data, nil)
 		return DistributionParameters{
 			Type:   NormalDist,
@@ -177,7 +170,7 @@ func FindBestDistribution(data []float64, fitForChoosing float64) DistributionPa
 	copy(sortedData, data)
 	sort.Float64s(sortedData)
 
-	// Test different distributions
+	// Test different distributions using the different fit functions
 	distributions := []struct {
 		distType DistributionType
 		fitFunc  func([]float64) (DistributionParameters, float64)
@@ -205,7 +198,7 @@ func FindBestDistribution(data []float64, fitForChoosing float64) DistributionPa
 
 	// If best fit is poor, default to empirical
 	if bestScore < fitForChoosing {
-		empiricalParams.GoodnessOfFit = 1.0 // By definition, empirical distribution fits the data perfectly
+		empiricalParams.GoodnessOfFit = 1.0 // Empirical distribution always fits the data perfectly
 		return empiricalParams
 	}
 
@@ -213,17 +206,15 @@ func FindBestDistribution(data []float64, fitForChoosing float64) DistributionPa
 	return bestFit
 }
 
-// fitNormal fits a normal distribution to the data
+// Fits a normal distribution to the data
 func fitNormal(data []float64) (DistributionParameters, float64) {
 	mean, std := stat.MeanStdDev(data, nil)
 
-	// Create normal distribution
 	normal := distuv.Normal{
 		Mu:    mean,
 		Sigma: std,
 	}
 
-	// Evaluate goodness of fit using KS test
 	score := goodnessOfFitKS(data, func(x float64) float64 {
 		return normal.CDF(x)
 	})
@@ -235,7 +226,7 @@ func fitNormal(data []float64) (DistributionParameters, float64) {
 	}, score
 }
 
-// fitGamma fits a gamma distribution to the data
+// Fits a gamma distribution to the data
 func fitGamma(data []float64) (DistributionParameters, float64) {
 	// Estimate parameters using method of moments
 	mean := stat.Mean(data, nil)
@@ -250,13 +241,11 @@ func fitGamma(data []float64) (DistributionParameters, float64) {
 		return DistributionParameters{}, math.Inf(-1)
 	}
 
-	// Create gamma distribution
 	gamma := distuv.Gamma{
 		Alpha: alpha,
 		Beta:  beta,
 	}
 
-	// Evaluate goodness of fit
 	score := goodnessOfFitKS(data, func(x float64) float64 {
 		return gamma.CDF(x)
 	})
@@ -270,7 +259,7 @@ func fitGamma(data []float64) (DistributionParameters, float64) {
 	}, score
 }
 
-// fitBeta fits a beta distribution to the data (assuming data is in range [0,1])
+// Fits a beta distribution to the data (assuming data is in range [0,1])
 func fitBeta(data []float64) (DistributionParameters, float64) {
 	// Check if data is in range [0,1]
 	for _, v := range data {
@@ -291,18 +280,16 @@ func fitBeta(data []float64) (DistributionParameters, float64) {
 	alpha := mean * temp
 	beta := (1 - mean) * temp
 
-	// If parameters are invalid, this distribution is a poor fit
+	// If any of the parameters are invalid, this distribution is a poor fit
 	if math.IsNaN(alpha) || math.IsNaN(beta) || alpha <= 0 || beta <= 0 {
 		return DistributionParameters{}, math.Inf(-1)
 	}
 
-	// Create beta distribution
 	betaDist := distuv.Beta{
 		Alpha: alpha,
 		Beta:  beta,
 	}
 
-	// Evaluate goodness of fit
 	score := goodnessOfFitKS(data, func(x float64) float64 {
 		return betaDist.CDF(x)
 	})
@@ -316,7 +303,7 @@ func fitBeta(data []float64) (DistributionParameters, float64) {
 	}, score
 }
 
-// fitExponential fits an exponential distribution to the data
+// Fits an exponential distribution to the data
 func fitExponential(data []float64) (DistributionParameters, float64) {
 	// Check if data is non-negative
 	for _, v := range data {
@@ -333,12 +320,10 @@ func fitExponential(data []float64) (DistributionParameters, float64) {
 	// Lambda is 1/mean for exponential
 	lambda := 1.0 / mean
 
-	// Create exponential distribution
 	exp := distuv.Exponential{
 		Rate: lambda,
 	}
 
-	// Evaluate goodness of fit
 	score := goodnessOfFitKS(data, func(x float64) float64 {
 		return exp.CDF(x)
 	})
@@ -351,7 +336,7 @@ func fitExponential(data []float64) (DistributionParameters, float64) {
 	}, score
 }
 
-// fitLogNormal fits a log-normal distribution to the data
+// Fits a log-normal distribution to the data
 func fitLogNormal(data []float64) (DistributionParameters, float64) {
 	// Check if data is positive
 	for _, v := range data {
@@ -360,22 +345,18 @@ func fitLogNormal(data []float64) (DistributionParameters, float64) {
 		}
 	}
 
-	// Transform to log space
+	// Transform to log space and compute mean and stdev in this space.
 	logData := make([]float64, len(data))
 	for i, v := range data {
 		logData[i] = math.Log(v)
 	}
-
-	// Compute mean and std in log space
 	mu, sigma := stat.MeanStdDev(logData, nil)
 
-	// Create lognormal distribution
 	lnorm := distuv.LogNormal{
 		Mu:    mu,
 		Sigma: sigma,
 	}
 
-	// Evaluate goodness of fit
 	score := goodnessOfFitKS(data, func(x float64) float64 {
 		return lnorm.CDF(x)
 	})
@@ -393,7 +374,7 @@ func fitLogNormal(data []float64) (DistributionParameters, float64) {
 	}, score
 }
 
-// createEmpiricalDistribution creates an empirical distribution from the data
+// Creates an empirical distribution from the data
 func createEmpiricalDistribution(data []float64) DistributionParameters {
 	n := len(data)
 
@@ -413,7 +394,7 @@ func createEmpiricalDistribution(data []float64) DistributionParameters {
 	}
 }
 
-// goodnessOfFitKS calculates the goodness of fit using Kolmogorov-Smirnov test
+// Calculates the goodness of fit using Kolmogorov-Smirnov test
 // Returns a score between 0 and 1, where higher is better
 func goodnessOfFitKS(data []float64, cdf func(float64) float64) float64 {
 	n := float64(len(data))
@@ -459,7 +440,7 @@ func goodnessOfFitKS(data []float64, cdf func(float64) float64) float64 {
 	}
 }
 
-// Different goodnessoffit function since KV only looks at top deviation
+// Calculates goodness of fit using the mean SSE
 func goodnessOfFitISE(data []float64, cdf func(float64) float64) float64 {
 	n := float64(len(data))
 	sumSquaredDiffs := 0.0
@@ -476,7 +457,6 @@ func goodnessOfFitISE(data []float64, cdf func(float64) float64) float64 {
 		sumSquaredDiffs += diff * diff
 	}
 
-	// Mean squared error over all data points
 	mse := sumSquaredDiffs / n
 
 	// Convert to a score where 1 = perfect fit, 0 = terrible fit
@@ -486,8 +466,7 @@ func goodnessOfFitISE(data []float64, cdf func(float64) float64) float64 {
 	return score
 }
 
-// CalculateProbability returns the probability of observing a value
-// according to the fitted distribution
+// Returns the probability of observing a value according to the fitted distribution
 func (dp *DistributionParameters) CalculateProbability(value float64) float64 {
 	switch dp.Type {
 	case NormalDist:
@@ -533,19 +512,19 @@ func (dp *DistributionParameters) CalculateProbability(value float64) float64 {
 	}
 }
 
-// empiricalProbability estimates probability using kernel density estimation
+// Estimates probability using kernel density estimation
 func empiricalProbability(x float64, data []float64) float64 {
 	if len(data) == 0 {
 		return 0
 	}
 
-	// Use Silverman's rule for bandwidth
+	// Use Silverman's rule for bandwidth TODO: might want to choose a different approach
 	n := float64(len(data))
 	std := stat.StdDev(data, nil)
 	h := 1.06 * std * math.Pow(n, -0.2)
 
 	if h == 0 {
-		// If std is 0, use a small bandwidth
+		// If stdev is 0, use a small bandwidth
 		h = 0.01
 	}
 
@@ -559,9 +538,9 @@ func empiricalProbability(x float64, data []float64) float64 {
 	return sum / (n * h * math.Sqrt(2*math.Pi))
 }
 
-// AnomalyScore calculates how different a text is from the fitted distributions
+// Calculates how different a text is from the fitted distributions
+// TODO: add position data
 func (m *TextDistributionFittedModel) AnomalyScore(text string) (float64, map[string]float64, float64) {
-	// Analyze the text
 	letterData := AnalyzeLettersFromText(text)
 
 	// Calculate likelihood scores for each character
@@ -678,9 +657,9 @@ func (m *TextDistributionFittedModel) GetModelSummary() string {
 		}
 
 		sb.WriteString(fmt.Sprintf("======%s: Frequency mean: %.4f (StdDev: ±%.4f)======\n",
-			char, m.CharDistribution[i], m.CharStdDev[i]))
+			char, m.CharRelativeMeanFrequency[i], m.CharRelativeStdDev[i]))
 		sb.WriteString(fmt.Sprintf("=====%s: Position mean: %.4f (StdDev: ±%.4f)=====\n",
-			char, m.PositionDistribution[i], m.PositionStdDev[i]))
+			char, m.PositionRelativeMean[i], m.PositionRelativeStdDev[i]))
 		dist := m.CharDistributionType[i]
 
 		sb.WriteString(fmt.Sprintf("%s frequency: %s distribution (fit: %.2f)\n",
@@ -727,7 +706,6 @@ func (m *TextDistributionFittedModel) GetModelSummary() string {
 }
 
 // SaveTextModel saves the distribution model to a file
-// TODO: generalize to all models
 func (m *TextDistributionFittedModel) SaveTextModel(filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -745,7 +723,6 @@ func (m *TextDistributionFittedModel) SaveTextModel(filename string) error {
 }
 
 // LoadTextModel loads a distribution model from a file
-// TODO: generalize to all models
 func LoadTextModel(filename string) (*TextDistributionFittedModel, error) {
 	file, err := os.Open(filename)
 	if err != nil {
