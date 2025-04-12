@@ -15,14 +15,9 @@ func main() {
 	// var parsedText2 = parser.ParseStringToAlphanumeric("aaaaThis is a test string123")
 	var returnStruct = analyzer.AnalyzeLettersFromText(parsedText)
 	var returnStruct2 = analyzer.AnalyzeLettersFromText(parsedText2)
-	// totalValue, err := analyzer.IntVectorMultiplication(returnStruct.LetterNumberArray[:], returnStruct2.LetterNumberArray[:])
-	// if err != nil {
-	// 	fmt.Println("Error:", err)
-	// } else {
 	fmt.Printf("Returned struct: %v\n Return totalcount: %v\n Return position array: %v\n", returnStruct.LetterNumberArray, returnStruct.TotalCount, returnStruct.PositionArray)
 	fmt.Printf("Returned struct2: %v\n Return totalcount2: %v\n Return position array2: %v\n", returnStruct2.LetterNumberArray, returnStruct2.TotalCount, returnStruct2.PositionArray)
-	// fmt.Printf("Total value %v\n", totalValue)
-	// }
+
 	cosineSimilarity := analyzer.CosineSimilarityVectors(returnStruct.LetterNumberArray[:], returnStruct2.LetterNumberArray[:])
 	JaccardIndex := analyzer.JaccardIndexVectors(returnStruct.LetterNumberArray[:], returnStruct2.LetterNumberArray[:])
 	fmt.Printf("Cosine similairity of the two arrays: %v\n", cosineSimilarity)
@@ -68,22 +63,6 @@ func main() {
 	// Print model summary
 	fmt.Println(model.GetModelSummary())
 
-	// Save the model
-	// modelPath := filepath.Join(".", "text_model.gob")
-	// if err := model.SaveTextModel(modelPath); err != nil {
-	// 	fmt.Printf("Error saving model: %v\n", err)
-	// 	return
-	// }
-	// fmt.Printf("Model saved to %s\n", modelPath)
-
-	// // Load the model (just to demonstrate)
-	// loadedModel, err := analyzer.LoadTextModel(modelPath)
-	// if err != nil {
-	// 	fmt.Printf("Error loading model: %v\n", err)
-	// 	return
-	// }
-	// fmt.Println("Model loaded successfully")
-
 	// Test text similar to training data
 	normalText := "This is similar to our training texts with numbers 123."
 	isAnomaly, score, anomalies, probability := model.IsAnomaly(normalText)
@@ -115,8 +94,5 @@ func main() {
 			fmt.Printf("  %s\n", a)
 		}
 	}
-
-	// Clean up
-	// os.Remove(modelPath)
 
 }

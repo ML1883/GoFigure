@@ -13,8 +13,8 @@ type LetterData struct {
 	PositionArray     [36][]int
 }
 
+// Takes text and return adress of the letterdata struct
 func AnalyzeLettersFromText(textToCount string) *LetterData {
-	//Take text and return adress of struct
 	lcText := LetterData{}
 	for index, char := range textToCount {
 		if unicode.IsLetter(char) || unicode.IsNumber(char) {
@@ -23,11 +23,9 @@ func AnalyzeLettersFromText(textToCount string) *LetterData {
 				var letterNumber int = int(letterLower - 'a')
 				lcText.LetterNumberArray[letterNumber+10]++
 				lcText.PositionArray[letterNumber+10] = append(lcText.PositionArray[letterNumber+10], index)
-				// fmt.Printf("For index %v, plussed position %v with one with character %c\n", index, letterNumber+10, char)
 			} else {
 				lcText.LetterNumberArray[int(char-'0')]++
 				lcText.PositionArray[int(char-'0')] = append(lcText.PositionArray[int(char-'0')], index)
-				// fmt.Printf("For index %v, plussed position %v with one with character %c\n", index, int(char), char)
 
 			}
 			lcText.LetterCount++
@@ -38,8 +36,9 @@ func AnalyzeLettersFromText(textToCount string) *LetterData {
 	return &lcText
 }
 
+// Function for vector multiplication for our specific use case
 func IntVectorMultiplication(array1 []int, array2 []int) (int, error) {
-	//Optimized function for vector multiplication
+
 	var lengthArray1 int = len(array1)
 	var lengthArray2 int = len(array2)
 
@@ -47,7 +46,6 @@ func IntVectorMultiplication(array1 []int, array2 []int) (int, error) {
 		var total int = 0
 		for index := range array1 {
 			total += (array1[index] * array2[index])
-			// fmt.Printf("Array 1 value: %v and array2 value: %v\n", array1[index], array2[index])
 		}
 		return total, nil
 	} else {
@@ -56,14 +54,13 @@ func IntVectorMultiplication(array1 []int, array2 []int) (int, error) {
 
 }
 
+// Performs consine similarity calculation on two arrays of integers.
+// Resulting in a cosine similairity. We do not check if the arrays have correct sizes.
+// Return range: [-1,1]
+// Where 1 is complete similairity
+// 0 is no similairity
+// -1 is complete opposites
 func CosineSimilarityVectors(array1 []int, array2 []int) float64 {
-	/*Performs consine similarity calculation on two arrays of integers.
-	Resulting in a cosine similairity. We do not check if the arrays have correct sizes.
-
-	Return range: [-1,1]
-	Where 1 is complete similairity
-	0 is no similairity
-	-1 is complete opposites*/
 	var dotProduct int = 0
 	var magnitudeArray1 int = 0
 	var magnitudeArray2 int = 0
@@ -78,12 +75,11 @@ func CosineSimilarityVectors(array1 []int, array2 []int) float64 {
 
 }
 
+// Calculate the Jaccard idnex of two arrays
+// Return range: [0,1]
+// Where 0 is not overlap at all
+// and 1 is complete overlap
 func JaccardIndexVectors(array1 []int, array2 []int) float64 {
-	/*Calculate the Jaccard idnex of two arrays
-
-	Return range: [0,1]
-	Where 0 is not overlap at all
-	and 1 is complete overlap*/
 	var intersection int = 0
 	var union int = 0
 
@@ -99,29 +95,20 @@ func JaccardIndexVectors(array1 []int, array2 []int) float64 {
 	return float64(intersection) / float64(union)
 }
 
+// Calculate average difference of each number or letter.
+// Calculate the average of that difference across the whole spectrum of numbers and letters.
+// Divide this difference over the max length of either one or two, minus one to normalize it.
+// Return range: [0,1]
+// Where 0 is complete similairity of positions
+// And nearing 1 is no similairity of positions.
+// The larger a string is, the greater the chance that it nears one.
+// That still needs to be fixed somehow.
 func PositionDifferenceVectors(array1 [][]int, array2 [][]int, totalLength1 int, totalLength2 int) float64 {
-	/*Calculate average difference of each number or letter.
-	Calculate the average of that difference across the whole spectrum of numbers and letters.
-	Divide this difference over the max length of either one or two, minus one to normalize it
-
-	Return range: [0,1]
-	Where 0 is complete similairity of positions
-	And nearing 1 is no similairity of positions.
-	The larger a string is, the greater the chance that it nears one.
-	That still needs to be fixed somehow.
-
-	TODO: Maybe calculate individual cosine similairities of arrays, add them together and average/median them out?
-	Or just leave this; the impact of strings being larger having a higher chance of scoring higher is a problem,
-	but I am not sure what the practical impact of this is.
-
-	That also leaves what to do with arrays of size 0.
-	*/
 
 	var lengthArray1 int = 0
 	var lengthArray2 int = 0
 	var totalAvgDifference float64 = 0
 	var elementsCalculated int = 0
-	// fmt.Printf("totalLengthsum: %v\n", totalLength1+totalLength2)
 
 	for i := range array1 {
 		var remainderTotal float64 = 0
@@ -130,10 +117,6 @@ func PositionDifferenceVectors(array1 [][]int, array2 [][]int, totalLength1 int,
 		subArray2 := array2[i]
 		lengthArray1 = len(subArray1)
 		lengthArray2 = len(subArray2)
-		// fmt.Printf("Subbaray1: %v\n", subArray1)
-		// fmt.Printf("Subbaray2: %v\n", subArray2)
-		// fmt.Printf("lengthArray1: %v\n", lengthArray1)
-		// fmt.Printf("lengthArray2: %v\n", lengthArray2)
 
 		if lengthArray1 == 0 && lengthArray2 == 0 {
 			continue

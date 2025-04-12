@@ -6,9 +6,9 @@ import (
 	"strings"
 )
 
+// Read a .txt file and return its contents as a string
 func ReadFile(path string) (string, error) {
-	/*Read a .txt file and return its contents as a string
-	 */
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
@@ -16,9 +16,8 @@ func ReadFile(path string) (string, error) {
 	return string(data), nil
 }
 
+// Read multiline input from console until the text "END" is found
 func ReadMultilineInput() string {
-	/*Read multiline input from console until the text "END is found"
-	 */
 	scanner := bufio.NewScanner(os.Stdin)
 	var lines []string
 
