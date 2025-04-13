@@ -1,9 +1,5 @@
 # GoFigure
-  This is a program to compare the similarity of texts in Go using letter frequency and position counting. I am not sure how well this method works compared to different techniques of comparing text similairity, but the idea of comparing texts using exact/analytical measures (i.e. frequency counting and such) as opposed to statistical interested me, and that is why I created this module.
-
-## Overview
-
-The `analyzer` package processes and compares text based on the distribution and position of characters (letters a–z and digits 0–9). It’s designed for use cases like anomaly detection, text similarity, and distribution modeling. The `parses` package provides basic parsing and file operations.
+  This is a Go program/library to compare the similarity of texts using letter frequency and letter position. The `letteranalyzer` module compares two texts based on this data and comes up with an exact number how similair the texts are. The `letterdistribution` module builds upon the data structure from `letteranalyzer` and fits statistical distributions to the frequency and position data across a group of texts. This fitted distribution can then be used to determine whether a new text follows the same pattern as the training texts, effectively serving as a model for comparison./ You might use this to e.g. check if a text is an anomaly compared to others. I am not sure how well this method works compared to different techniques of comparing text similairity, but the idea of comparing texts using exact/analytical measures (i.e. frequency counting and such) as opposed to statistical interested me, and that is why I created this module. I think the crude method this library uses has it's up and downsides. It is up to the end user to determine what carries more weight.
 
 ## Features
 
@@ -32,29 +28,28 @@ go get github.com/ML1883/GoFigure
 
 ## Command-Line Interface
 
-The `cmd` directory contains a CLI application that makes the package's functionality available through command-line arguments:
+The `cmd/test` directory contains a CLI application that makes the package's functionality available through command-line arguments:
 
 ### Comparison Mode
-
 ```bash
 # Compare two files
-./program -compare -file -text1=file1.txt -text2=file2.txt
+./main -compare -file -text1=file1.txt -text2=file2.txt
 
 # Interactive text comparison
-./program -compare
+./main -compare
 ```
 
 ### Distribution Mode
 
 ```bash
 # Create a distribution model from training texts
-./program -distribution -create-model -folder=./training_texts -model-file=model.gob
+./main -distribution -create-model -folder=./training_texts -model-file=model.gob
 
 # Check text against an existing model
-./program -distribution -use-model -model-file=model.gob -check-text=sample.txt
+./main -distribution -use-model -model-file=model.gob -check-text=sample.txt
 
 # Interactive analysis with existing model
-./program -distribution -use-model -model-file=model.gob
+./main -distribution -use-model -model-file=model.gob
 ```
 
 ### Additional Options
