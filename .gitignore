@@ -26,3 +26,9 @@ go.work.sum
 
 #vscode
 .vscode
+
+#training texts 
+traintexts/
+
+#trained models 
+*.gob

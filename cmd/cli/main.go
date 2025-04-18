@@ -266,26 +266,49 @@ func useDistributionModel(modelFilePath string, checkTextFilePath string, output
 func analyzeTextWithModel(model *analyzer.TextDistributionFittedModel, text string) {
 	parsedText := parser.ParseStringToAlphanumeric(text)
 
-	isAnomaly, score, _, probability := model.IsAnomaly(parsedText)
+	isAnomalyFrequency, scoreFrequency, _, probabilityFrequency, isAnomalyPositions, scorePositions, _, probabilityPositions := model.IsAnomaly(parsedText)
+	topAnomaliesFrequency, topAnomaliesPositions := model.GetTopAnomalies(parsedText, 10)
 
 	fmt.Println("\n=========================")
-	fmt.Println("Analysis Results")
+	fmt.Println("Analysis Results Frequency")
 	fmt.Println("=========================")
 
-	if isAnomaly {
+	if isAnomalyFrequency {
 		fmt.Printf("ANOMALY DETECTED with score %.4f (threshold: %.4f)\n",
-			score, model.AnomalyThreshold)
+			scoreFrequency, model.AnomalyThreshold)
 	} else {
 		fmt.Printf("Text appears normal with score %.4f (threshold: %.4f)\n",
-			score, model.AnomalyThreshold)
+			scoreFrequency, model.AnomalyThreshold)
 	}
 
-	fmt.Printf("Probability: %.10f\n", probability)
+	fmt.Printf("Probability: %.10f\n", probabilityFrequency)
 
 	fmt.Println("\nTop anomalous characters:")
-	topAnomalies := model.GetTopAnomalies(parsedText, 5)
-	if len(topAnomalies) > 0 {
-		for _, anomaly := range topAnomalies {
+	if len(topAnomaliesFrequency) > 0 {
+		for _, anomaly := range topAnomaliesFrequency {
+			fmt.Printf("  %s\n", anomaly)
+		}
+	} else {
+		fmt.Println("  No significant anomalies detected")
+	}
+
+	fmt.Println("\n=========================")
+	fmt.Println("Analysis Results Positions")
+	fmt.Println("=========================")
+
+	if isAnomalyPositions {
+		fmt.Printf("ANOMALY DETECTED with score %.4f (threshold: %.4f)\n",
+			scorePositions, model.AnomalyThreshold)
+	} else {
+		fmt.Printf("Text appears normal with score %.4f (threshold: %.4f)\n",
+			scorePositions, model.AnomalyThreshold)
+	}
+
+	fmt.Printf("Probability: %.10f\n", probabilityPositions)
+
+	fmt.Println("\nTop anomalous characters:")
+	if len(topAnomaliesPositions) > 0 {
+		for _, anomaly := range topAnomaliesPositions {
 			fmt.Printf("  %s\n", anomaly)
 		}
 	} else {
@@ -294,38 +317,5 @@ func analyzeTextWithModel(model *analyzer.TextDistributionFittedModel, text stri
 
 	letterData := analyzer.AnalyzeLettersFromText(parsedText)
 
-	fmt.Println("\nCharacter frequency distribution:")
 	fmt.Printf("Total characters: %d\n", letterData.TotalCount)
-
-	// Display letter frequencies for non-zero counts
-	for i := 0; i < 36; i++ {
-		if letterData.LetterNumberArray[i] > 0 {
-			var char string
-			if i < 10 {
-				char = fmt.Sprintf("%d", i)
-			} else {
-				char = string(rune('a' + (i - 10)))
-			}
-
-			relFreq := float64(letterData.LetterNumberArray[i]) / float64(letterData.TotalCount)
-
-			// Get expected frequency from model
-			expectedFreq := model.CharRelativeMeanFrequency[i]
-
-			// Calculate deviation
-			deviation := (relFreq - expectedFreq) / model.CharRelativeStdDev[i]
-
-			var deviationStr string
-			if deviation > 2.0 {
-				deviationStr = "significantly higher than expected"
-			} else if deviation < -2.0 {
-				deviationStr = "significantly lower than expected"
-			} else {
-				deviationStr = "within normal range"
-			}
-
-			fmt.Printf("  %s: %.4f (expected: %.4f, %s)\n",
-				char, relFreq, expectedFreq, deviationStr)
-		}
-	}
 }

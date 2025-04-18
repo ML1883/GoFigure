@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	fmt.Println("Starting main script.")
+	fmt.Println("Starting main test script.")
 	var parsedText = parser.ParseStringToAlphanumeric("         aaaa")
 	var parsedText2 = parser.ParseStringToAlphanumeric("aaaa         ")
 	// var parsedText = parser.ParseStringToAlphanumeric("This is a test string123aaaa")
@@ -65,32 +65,29 @@ func main() {
 
 	// Test text similar to training data
 	normalText := "This is similar to our training texts with numbers 123."
-	isAnomaly, score, anomalies, probability := model.IsAnomaly(normalText)
-	fmt.Printf("\nNormal Text Analysis:\n")
-	fmt.Printf("Is anomaly: %v\n", isAnomaly)
-	fmt.Printf("Anomaly score: %.2f\n", score)
-	fmt.Printf("Probability of observing this text: %.2f\n", probability)
+	isAnomalyFrequency, scoreFrequency, anomaliesFrequency, probabilityFrequency, isAnomalyPositions, scorePositions, anomaliesPositions, probabilityPositions := model.IsAnomaly(normalText)
+	fmt.Printf("\nNormal Text Analysis freqeuency:\n")
+	fmt.Printf("Is anomaly: %v\n", isAnomalyFrequency)
+	fmt.Printf("Anomaly score: %.2f\n", scoreFrequency)
+	fmt.Printf("Probability of observing this text: %.2f\n", probabilityFrequency)
 
-	if len(anomalies) > 0 {
+	if len(anomaliesFrequency) > 0 {
 		fmt.Println("Top anomalies:")
-		topAnomalies := model.GetTopAnomalies(normalText, 3)
-		for _, a := range topAnomalies {
+		topAnomaliesFrequency, _ := model.GetTopAnomalies(normalText, 3)
+		for _, a := range topAnomaliesFrequency {
 			fmt.Printf("  %s\n", a)
 		}
 	}
 
-	// Test text with different distribution
-	anomalousText := "ZZZZZZZZZZ999999999XXXXXXXXXX000000000000000000"
-	isAnomaly, score, anomalies, probability = model.IsAnomaly(anomalousText)
-	fmt.Printf("\nAnomalous Text Analysis:\n")
-	fmt.Printf("Is anomaly: %v\n", isAnomaly)
-	fmt.Printf("Anomaly score: %.2f\n", score)
-	fmt.Printf("Probability of observing this text: %.2f\n", probability)
+	fmt.Printf("\nNormal Text Analysis position:\n")
+	fmt.Printf("Is anomaly: %v\n", isAnomalyPositions)
+	fmt.Printf("Anomaly score: %.2f\n", scorePositions)
+	fmt.Printf("Probability of observing this text: %.2f\n", probabilityPositions)
 
-	if len(anomalies) > 0 {
+	if len(anomaliesPositions) > 0 {
 		fmt.Println("Top anomalies:")
-		topAnomalies := model.GetTopAnomalies(anomalousText, 5)
-		for _, a := range topAnomalies {
+		_, topAnomaliesPositions := model.GetTopAnomalies(normalText, 3)
+		for _, a := range topAnomaliesPositions {
 			fmt.Printf("  %s\n", a)
 		}
 	}
