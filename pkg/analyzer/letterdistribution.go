@@ -613,8 +613,10 @@ func (m *TextDistributionFittedModel) AnomalyScore(text string) (float64, map[st
 		probFrequency := m.CharDistributionType[i].CalculateProbability(relFreq)
 		probPosition := m.PositionDistributionType[i].CalculateProbability(tempPositionRelativeMean)
 
-		calculatedProbFrequency = probFrequency
+		calculatedProbFrequency = probFrequency //TODO: Figure out if this is all correct.
 		calculatedProbPosition = probPosition
+		// fmt.Printf("Calculated probability frequency mean: %.4f\n", calculatedProbPosition)
+		// fmt.Printf("Calculated probability position mean: %.4f\n", calculatedProbPosition)
 
 		// Convert to anomaly score (lower probability = higher anomaly)
 		// Use negative log probability as anomaly score
