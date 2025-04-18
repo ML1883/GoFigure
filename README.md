@@ -59,6 +59,10 @@ The `cmd/test` directory contains a CLI application that makes the package's fun
 - `-fit-threshold=0.8`: Control distribution fitting (higher = more empirical)
 - `-help`: Display help information
 
+## Known problems/TODO
+- Extremely similair model training texts causing distribution shapes to go to infinity.
+- calculatedProb variations of the function AnomalyScore can be NaN.
+
 ## Dependencies
 
 - [Gonum](https://github.com/gonum/gonum) – for statistical functions and distribution fitting
