@@ -35,7 +35,7 @@ The `cmd/test` directory contains a CLI application that makes the package's fun
 # Compare two files
 ./main -compare -file -text1=file1.txt -text2=file2.txt
 
-# Interactive text comparison
+# Interactive/direct input text comparison
 ./main -compare
 ```
 
@@ -48,7 +48,7 @@ The `cmd/test` directory contains a CLI application that makes the package's fun
 # Check text against an existing model
 ./main -distribution -use-model -model-file=model.gob -check-text=sample.txt
 
-# Interactive analysis with existing model
+# Interactive/direct input analysis with existing model
 ./main -distribution -use-model -model-file=model.gob
 ```
 

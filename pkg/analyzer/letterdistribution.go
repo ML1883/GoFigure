@@ -574,17 +574,22 @@ func empiricalProbability(x float64, data []float64) float64 {
 
 // Calculates how different a text is from the fitted distributions
 // TODO: add position data
-func (m *TextDistributionFittedModel) AnomalyScore(text string) (float64, map[string]float64, float64) {
+func (m *TextDistributionFittedModel) AnomalyScore(text string) (float64, map[string]float64, float64, float64, map[string]float64, float64) {
 	letterData := AnalyzeLettersFromText(text)
 
 	// Calculate likelihood scores for each character
-	anomalyScores := make(map[string]float64)
-	var totalScore float64
-	var significantDeviations int
-	var calculatedProb float64
+	anomalyScoresFrequency := make(map[string]float64)
+	var totalFrequencyScore float64
+	var significantDeviationsFrequency int
+	var calculatedProbFrequency float64
+
+	anomalyScoresPositions := make(map[string]float64)
+	var totalPositionScore float64
+	var significantDeviationsPositions int
+	var calculatedProbPosition float64
 
 	for i := 0; i < 36; i++ {
-		// Skip characters with no distribution data
+		// Skip characters with no distribution data, we wont have distribution data for this either then.
 		if len(m.CharFrequencyData[i]) == 0 {
 			continue
 		}
@@ -595,22 +600,41 @@ func (m *TextDistributionFittedModel) AnomalyScore(text string) (float64, map[st
 			relFreq = float64(letterData.LetterNumberArray[i]) / float64(letterData.TotalCount)
 		}
 
-		// Calculate probability of observing this frequency
-		prob := m.CharDistributionType[i].CalculateProbability(relFreq)
+		// Calculate relative positions for this character
+		var positions []float64
 
-		calculatedProb = prob
+		for _, pos := range letterData.PositionArray[i] {
+			relPos := float64(pos) / float64(letterData.TotalCount)
+			positions = append(positions, relPos)
+		}
+		tempPositionRelativeMean := stat.Mean(positions, nil)
+
+		// Calculate probability of observing this frequency
+		probFrequency := m.CharDistributionType[i].CalculateProbability(relFreq)
+		probPosition := m.PositionDistributionType[i].CalculateProbability(tempPositionRelativeMean)
+
+		calculatedProbFrequency = probFrequency
+		calculatedProbPosition = probPosition
+
 		// Convert to anomaly score (lower probability = higher anomaly)
 		// Use negative log probability as anomaly score
-		var anomalyScore float64
-		if prob > 0 {
-			anomalyScore = -math.Log10(prob)
+		var anomalyScoreFrequency float64
+		if probFrequency > 0 {
+			anomalyScoreFrequency = -math.Log10(probFrequency)
 		} else {
-			anomalyScore = 10 // Very high anomaly for zero probability
+			anomalyScoreFrequency = 10 // Very high anomaly for zero probability
+		}
+
+		var anomalyScorePosition float64
+		if probPosition > 0 {
+			anomalyScorePosition = -math.Log10(probPosition)
+		} else {
+			anomalyScorePosition = 10 // Very high anomaly for zero probability
 		}
 
 		// Only count significant deviations
 		// Using threshold of 2 (prob < 0.01) for significance
-		if anomalyScore > 2 {
+		if anomalyScoreFrequency > 2 {
 			var charLabel string
 			if i < 10 {
 				// It's a number
@@ -620,23 +644,42 @@ func (m *TextDistributionFittedModel) AnomalyScore(text string) (float64, map[st
 				charLabel = string(rune('a' + (i - 10)))
 			}
 
-			anomalyScores[charLabel] = anomalyScore
-			totalScore += anomalyScore
-			significantDeviations++
+			anomalyScoresFrequency[charLabel] = anomalyScoreFrequency
+			totalFrequencyScore += anomalyScoreFrequency
+			significantDeviationsFrequency++
+		}
+
+		if anomalyScorePosition > 2 {
+			var charLabel string
+			if i < 10 {
+				// It's a number
+				charLabel = fmt.Sprintf("%d", i)
+			} else {
+				// It's a letter
+				charLabel = string(rune('a' + (i - 10)))
+			}
+
+			anomalyScoresPositions[charLabel] = anomalyScorePosition
+			totalPositionScore += anomalyScorePosition
+			significantDeviationsPositions++
 		}
 	}
 
 	// Normalize the score
-	if significantDeviations > 0 {
-		totalScore /= float64(significantDeviations)
+	if significantDeviationsFrequency > 0 {
+		totalFrequencyScore /= float64(significantDeviationsFrequency)
 	}
 
-	return totalScore, anomalyScores, calculatedProb
+	if significantDeviationsPositions > 0 {
+		totalPositionScore /= float64(significantDeviationsPositions)
+	}
+
+	return totalFrequencyScore, anomalyScoresFrequency, calculatedProbFrequency, totalPositionScore, anomalyScoresPositions, calculatedProbPosition
 }
 
 // GetTopAnomalies returns the top n anomalous characters sorted by z-score
-func (m *TextDistributionFittedModel) GetTopAnomalies(text string, n int) []string {
-	_, anomalies, _ := m.AnomalyScore(text)
+func (m *TextDistributionFittedModel) GetTopAnomalies(text string, n int) ([]string, []string) {
+	_, anomaliesFrequencies, _, _, anomaliesPosition, _ := m.AnomalyScore(text)
 
 	// Convert map to slice for sorting
 	type anomalyEntry struct {
@@ -644,29 +687,46 @@ func (m *TextDistributionFittedModel) GetTopAnomalies(text string, n int) []stri
 		score float64
 	}
 
-	var entries []anomalyEntry
-	for char, score := range anomalies {
-		entries = append(entries, anomalyEntry{char, score})
+	var entriesFrequency []anomalyEntry
+	var entriesPosition []anomalyEntry
+
+	for char, score := range anomaliesFrequencies {
+		if score != 10 { //10 scores are useless in practice; they just signal a character not being used when training text amount is low.
+			entriesFrequency = append(entriesFrequency, anomalyEntry{char, score})
+		}
+	}
+	for char, score := range anomaliesPosition {
+		if score != 10 {
+			entriesPosition = append(entriesPosition, anomalyEntry{char, score})
+		}
 	}
 
 	// Sort by score (descending)
-	sort.Slice(entries, func(i, j int) bool {
-		return entries[i].score > entries[j].score
+	sort.Slice(entriesFrequency, func(i, j int) bool {
+		return entriesFrequency[i].score > entriesFrequency[j].score
+	})
+	sort.Slice(entriesPosition, func(i, j int) bool {
+		return entriesPosition[i].score > entriesPosition[j].score
 	})
 
-	// Get top n results
-	var results []string
-	for i := 0; i < min(n, len(entries)); i++ {
-		results = append(results, fmt.Sprintf("%s (%.2f)", entries[i].char, entries[i].score))
+	// Get top n resultsFrequency
+	var resultsFrequency []string
+	for i := 0; i < min(n, len(entriesFrequency)); i++ {
+		resultsFrequency = append(resultsFrequency, fmt.Sprintf("%s (%.2f)", entriesFrequency[i].char, entriesFrequency[i].score))
+	}
+	var resultsPositions []string
+	for i := 0; i < min(n, len(entriesPosition)); i++ {
+		resultsPositions = append(resultsPositions, fmt.Sprintf("%s (%.2f)", entriesPosition[i].char, entriesPosition[i].score))
 	}
 
-	return results
+	return resultsFrequency, resultsPositions
 }
 
 // IsAnomaly determines if a text is anomalous using fitted distributions
-func (m *TextDistributionFittedModel) IsAnomaly(text string) (bool, float64, map[string]float64, float64) {
-	score, anomalies, probability := m.AnomalyScore(text)
-	return score > m.AnomalyThreshold, score, anomalies, probability
+func (m *TextDistributionFittedModel) IsAnomaly(text string) (bool, float64, map[string]float64, float64, bool, float64, map[string]float64, float64) {
+	scoreFrequency, anomaliesFrequency, probabilityFrequency, scorePositions, anomaliesPositions, probabilityPositions := m.AnomalyScore(text)
+	return scoreFrequency > m.AnomalyThreshold, scoreFrequency, anomaliesFrequency, probabilityFrequency, scorePositions > m.AnomalyThreshold, scorePositions, anomaliesPositions, probabilityPositions
+
 }
 
 // GetModelSummary returns a string summary of the fitted distributions
